@@ -1,7 +1,0 @@
-{
-  "framework": "nextjs",
-  "rootDirectory": "aituber-kit",
-  "buildCommand": "cd aituber-kit && npm install && npm run build",
-  "installCommand": "cd aituber-kit && npm install",
-  "regions": ["hnd1"]
-}
