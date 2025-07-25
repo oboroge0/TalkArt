@@ -1,19 +1,19 @@
 import { create } from 'zustand'
-import { 
-  SessionData, 
-  ExperiencePhase, 
-  ConversationResponse, 
+import {
+  SessionData,
+  ExperiencePhase,
+  ConversationResponse,
   GeneratedArtwork,
-  ExperienceFlowState 
+  ExperienceFlowState,
 } from '@/features/talkart/types'
 
 interface SessionState {
   // セッションデータ
   currentSession: SessionData | null
-  
+
   // 体験フロー状態
   flowState: ExperienceFlowState
-  
+
   // アクション
   startSession: () => void
   endSession: () => void
@@ -35,7 +35,7 @@ const initialFlowState: ExperienceFlowState = {
   isTransitioning: false,
   canProceed: true,
   error: undefined,
-  timeRemaining: undefined
+  timeRemaining: undefined,
 }
 
 export const useSessionStore = create<SessionState>((set, get) => ({
@@ -48,15 +48,15 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       sessionId,
       startTime: new Date(),
       currentPhase: 'START',
-      conversationResponses: []
+      conversationResponses: [],
     }
-    
+
     set({
       currentSession: newSession,
       flowState: {
         ...initialFlowState,
-        currentPhase: 'START'
-      }
+        currentPhase: 'START',
+      },
     })
   },
 
@@ -65,10 +65,10 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     if (currentSession) {
       const updatedSession: SessionData = {
         ...currentSession,
-        endTime: new Date()
+        endTime: new Date(),
       }
       set({
-        currentSession: updatedSession
+        currentSession: updatedSession,
       })
     }
   },
@@ -79,13 +79,13 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       set({
         currentSession: {
           ...currentSession,
-          currentPhase: phase
+          currentPhase: phase,
         },
         flowState: {
           ...flowState,
           currentPhase: phase,
-          error: undefined
-        }
+          error: undefined,
+        },
       })
     }
   },
@@ -98,9 +98,9 @@ export const useSessionStore = create<SessionState>((set, get) => ({
           ...currentSession,
           conversationResponses: [
             ...currentSession.conversationResponses,
-            response
-          ]
-        }
+            response,
+          ],
+        },
       })
     }
   },
@@ -111,8 +111,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       set({
         currentSession: {
           ...currentSession,
-          generatedArtwork: artwork
-        }
+          generatedArtwork: artwork,
+        },
       })
     }
   },
@@ -120,7 +120,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   resetSession: () => {
     set({
       currentSession: null,
-      flowState: initialFlowState
+      flowState: initialFlowState,
     })
   },
 
@@ -129,8 +129,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     set({
       flowState: {
         ...flowState,
-        timeRemaining: time
-      }
+        timeRemaining: time,
+      },
     })
   },
 
@@ -139,8 +139,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     set({
       flowState: {
         ...flowState,
-        error: error || undefined
-      }
+        error: error || undefined,
+      },
     })
   },
 
@@ -149,8 +149,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     set({
       flowState: {
         ...flowState,
-        isTransitioning: transitioning
-      }
+        isTransitioning: transitioning,
+      },
     })
-  }
+  },
 }))

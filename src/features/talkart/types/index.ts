@@ -108,17 +108,17 @@ export interface SystemConfig {
   // パフォーマンス設定
   targetFPS: number
   enableGPUAcceleration: boolean
-  
+
   // 体験設定
   conversationTimeLimit: number
   generationTimeLimit: number
-  
+
   // アニメーション設定
   animation: AnimationConfig
-  
+
   // 音響設定
   audio: AudioConfig
-  
+
   // デバッグ設定
   debugMode: boolean
   showFPS: boolean

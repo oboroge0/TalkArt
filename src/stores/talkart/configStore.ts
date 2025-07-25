@@ -1,5 +1,9 @@
 import { create } from 'zustand'
-import { SystemConfig, AnimationConfig, AudioConfig } from '@/features/talkart/types'
+import {
+  SystemConfig,
+  AnimationConfig,
+  AudioConfig,
+} from '@/features/talkart/types'
 
 interface ConfigStore {
   config: SystemConfig
@@ -13,19 +17,19 @@ const defaultConfig: SystemConfig = {
   // パフォーマンス設定
   targetFPS: 60,
   enableGPUAcceleration: true,
-  
+
   // 体験設定
   conversationTimeLimit: 45, // 45秒
-  generationTimeLimit: 10,   // 10秒
-  
+  generationTimeLimit: 10, // 10秒
+
   // アニメーション設定
   animation: {
     fadeTransitionDuration: 300, // 0.3秒
     buttonHoverScale: 1.05,
     enableParticleEffects: true,
-    enableCharacterAnimations: true
+    enableCharacterAnimations: true,
   },
-  
+
   // 音響設定
   audio: {
     completionSoundEnabled: true,
@@ -33,14 +37,14 @@ const defaultConfig: SystemConfig = {
     volumeLevels: {
       bgm: 0.3,
       se: 0.7,
-      voice: 0.8
-    }
+      voice: 0.8,
+    },
   },
-  
+
   // デバッグ設定
   debugMode: false,
   showFPS: false,
-  showTimeRemaining: false
+  showTimeRemaining: false,
 }
 
 export const useConfigStore = create<ConfigStore>((set, get) => ({
@@ -51,8 +55,8 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     set({
       config: {
         ...config,
-        ...updates
-      }
+        ...updates,
+      },
     })
   },
 
@@ -63,9 +67,9 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
         ...config,
         animation: {
           ...config.animation,
-          ...updates
-        }
-      }
+          ...updates,
+        },
+      },
     })
   },
 
@@ -76,15 +80,15 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
         ...config,
         audio: {
           ...config.audio,
-          ...updates
-        }
-      }
+          ...updates,
+        },
+      },
     })
   },
 
   resetToDefaults: () => {
     set({
-      config: defaultConfig
+      config: defaultConfig,
     })
-  }
+  },
 }))

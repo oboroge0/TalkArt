@@ -4,7 +4,9 @@ interface TalkArtBackgroundProps {
   variant?: 'default' | 'festival' | 'fireworks'
 }
 
-export const TalkArtBackground: React.FC<TalkArtBackgroundProps> = ({ variant = 'default' }) => {
+export const TalkArtBackground: React.FC<TalkArtBackgroundProps> = ({
+  variant = 'default',
+}) => {
   return (
     <>
       {/* 背景グラデーション */}
@@ -23,7 +25,7 @@ export const TalkArtBackground: React.FC<TalkArtBackgroundProps> = ({ variant = 
               left: `${20 + i * 15}%`,
               top: `${10 + (i % 2) * 10}%`,
               animationDelay: `${i * 0.5}s`,
-              animationDuration: `${3 + i * 0.5}s`
+              animationDuration: `${3 + i * 0.5}s`,
             }}
           >
             <div className="w-16 h-24 bg-gradient-to-b from-red-500 to-orange-600 rounded-full opacity-80 shadow-2xl" />
@@ -41,7 +43,7 @@ export const TalkArtBackground: React.FC<TalkArtBackgroundProps> = ({ variant = 
               style={{
                 left: `${Math.random() * 100}%`,
                 top: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 2}s`
+                animationDelay: `${Math.random() * 2}s`,
               }}
             />
           ))}

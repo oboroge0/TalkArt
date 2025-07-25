@@ -1,4 +1,8 @@
-import { ConversationQuestion, ConversationResponse, ConversationFlow } from '@/features/talkart/types'
+import {
+  ConversationQuestion,
+  ConversationResponse,
+  ConversationFlow,
+} from '@/features/talkart/types'
 import { conversationFlow } from './questionData'
 
 export class QuestionManager {
@@ -38,7 +42,7 @@ export class QuestionManager {
       question: currentQuestion.text,
       selectedAnswer,
       timestamp: Date.now(),
-      stepNumber: currentQuestion.stepNumber
+      stepNumber: currentQuestion.stepNumber,
     }
 
     this.responses.push(response)
@@ -54,8 +58,9 @@ export class QuestionManager {
     return {
       current: this.currentQuestionIndex + 1,
       total: this.questions.length,
-      percentage: ((this.currentQuestionIndex + 1) / this.questions.length) * 100,
-      isComplete: this.currentQuestionIndex >= this.questions.length
+      percentage:
+        ((this.currentQuestionIndex + 1) / this.questions.length) * 100,
+      isComplete: this.currentQuestionIndex >= this.questions.length,
     }
   }
 
@@ -90,7 +95,7 @@ export class QuestionManager {
   isCurrentQuestionTimedOut(): boolean {
     const currentQuestion = this.getCurrentQuestion()
     if (!currentQuestion || !currentQuestion.timeLimit) return false
-    
+
     return this.getCurrentQuestionRemainingTime() <= 0
   }
 
@@ -106,7 +111,7 @@ export class QuestionManager {
     }
 
     let summary = '夏祭りの思い出: '
-    
+
     this.responses.forEach((response, index) => {
       switch (response.questionId) {
         case 'q1_atmosphere':
@@ -127,7 +132,8 @@ export class QuestionManager {
       }
     })
 
-    summary += 'という夏祭りの記憶を、温かく懐かしい雰囲気の日本の夏祭りのイラストとして描いてください。'
+    summary +=
+      'という夏祭りの記憶を、温かく懐かしい雰囲気の日本の夏祭りのイラストとして描いてください。'
     return summary
   }
 
@@ -157,7 +163,7 @@ export class QuestionManager {
       elapsedTime: this.getElapsedTime(),
       remainingTime: this.getRemainingTime(),
       isComplete: this.getProgress().isComplete,
-      isTimedOut: this.isTimedOut()
+      isTimedOut: this.isTimedOut(),
     }
   }
 }

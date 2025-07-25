@@ -10,15 +10,20 @@ interface TalkArtFormProps {
   onTimeout?: () => void
 }
 
-export const TalkArtForm: React.FC<TalkArtFormProps> = ({ onComplete, onTimeout }) => {
+export const TalkArtForm: React.FC<TalkArtFormProps> = ({
+  onComplete,
+  onTimeout,
+}) => {
   const [questionManager] = useState(() => new QuestionManager())
-  const [currentQuestion, setCurrentQuestion] = useState<ConversationQuestion | null>(null)
+  const [currentQuestion, setCurrentQuestion] =
+    useState<ConversationQuestion | null>(null)
   const [selectedAnswer, setSelectedAnswer] = useState<string>('')
   const [timeRemaining, setTimeRemaining] = useState<number>(45)
   const [questionTimeRemaining, setQuestionTimeRemaining] = useState<number>(0)
   const [isTransitioning, setIsTransitioning] = useState(false)
 
-  const { addConversationResponse, setTimeRemaining: setStoreTimeRemaining } = useSessionStore()
+  const { addConversationResponse, setTimeRemaining: setStoreTimeRemaining } =
+    useSessionStore()
   const { config } = useConfigStore()
 
   // 質問を初期化
@@ -34,8 +39,10 @@ export const TalkArtForm: React.FC<TalkArtFormProps> = ({ onComplete, onTimeout 
   useEffect(() => {
     const timer = setInterval(() => {
       const remaining = Math.ceil(questionManager.getRemainingTime() / 1000)
-      const questionRemaining = Math.ceil(questionManager.getCurrentQuestionRemainingTime() / 1000)
-      
+      const questionRemaining = Math.ceil(
+        questionManager.getCurrentQuestionRemainingTime() / 1000
+      )
+
       setTimeRemaining(remaining)
       setQuestionTimeRemaining(questionRemaining)
       setStoreTimeRemaining(remaining)
@@ -74,13 +81,13 @@ export const TalkArtForm: React.FC<TalkArtFormProps> = ({ onComplete, onTimeout 
       question: currentQuestion.text,
       selectedAnswer,
       timestamp: Date.now(),
-      stepNumber: currentQuestion.stepNumber
+      stepNumber: currentQuestion.stepNumber,
     })
 
     // 短い遅延後に次の質問へ
     setTimeout(() => {
       const nextQuestion = questionManager.nextQuestion()
-      
+
       if (nextQuestion) {
         setCurrentQuestion(nextQuestion)
         setSelectedAnswer('')
@@ -92,20 +99,27 @@ export const TalkArtForm: React.FC<TalkArtFormProps> = ({ onComplete, onTimeout 
         const responses = questionManager.getResponses()
         onComplete(responses)
       }
-      
+
       setIsTransitioning(false)
     }, config.animation.fadeTransitionDuration)
-  }, [selectedAnswer, currentQuestion, questionManager, addConversationResponse, onComplete, config])
+  }, [
+    selectedAnswer,
+    currentQuestion,
+    questionManager,
+    addConversationResponse,
+    onComplete,
+    config,
+  ])
 
   // 質問タイムアウト処理
   const handleQuestionTimeout = useCallback(() => {
     if (config.debugMode) {
       console.log('Question timeout occurred')
     }
-    
+
     questionManager.skipCurrentQuestion()
     const nextQuestion = questionManager.getCurrentQuestion()
-    
+
     if (nextQuestion) {
       setCurrentQuestion(nextQuestion)
       setSelectedAnswer('')
@@ -144,11 +158,13 @@ export const TalkArtForm: React.FC<TalkArtFormProps> = ({ onComplete, onTimeout 
       {/* 進捗バー */}
       <div className="mb-8">
         <div className="flex justify-between text-white text-sm mb-2">
-          <span>質問 {progress.current} / {progress.total}</span>
+          <span>
+            質問 {progress.current} / {progress.total}
+          </span>
           <span>残り時間: {timeRemaining}秒</span>
         </div>
         <div className="w-full bg-gray-700 rounded-full h-2">
-          <div 
+          <div
             className="bg-orange-500 h-2 rounded-full transition-all duration-300"
             style={{ width: `${progress.percentage}%` }}
           />
@@ -159,10 +175,10 @@ export const TalkArtForm: React.FC<TalkArtFormProps> = ({ onComplete, onTimeout 
               この質問の残り時間: {questionTimeRemaining}秒
             </div>
             <div className="w-full bg-gray-600 rounded-full h-1">
-              <div 
+              <div
                 className="bg-yellow-500 h-1 rounded-full transition-all duration-100"
-                style={{ 
-                  width: `${currentQuestion.timeLimit ? (questionTimeRemaining / currentQuestion.timeLimit) * 100 : 0}%` 
+                style={{
+                  width: `${currentQuestion.timeLimit ? (questionTimeRemaining / currentQuestion.timeLimit) * 100 : 0}%`,
                 }}
               />
             </div>
@@ -171,9 +187,11 @@ export const TalkArtForm: React.FC<TalkArtFormProps> = ({ onComplete, onTimeout 
       </div>
 
       {/* 質問カード */}
-      <div className={`bg-white/90 backdrop-blur-sm rounded-xl p-8 shadow-2xl transition-all duration-${config.animation.fadeTransitionDuration} ${
-        isTransitioning ? 'opacity-50 scale-95' : 'opacity-100 scale-100'
-      }`}>
+      <div
+        className={`bg-white/90 backdrop-blur-sm rounded-xl p-8 shadow-2xl transition-all duration-${config.animation.fadeTransitionDuration} ${
+          isTransitioning ? 'opacity-50 scale-95' : 'opacity-100 scale-100'
+        }`}
+      >
         <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
           {currentQuestion.text}
         </h2>

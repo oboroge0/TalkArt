@@ -5,7 +5,10 @@ interface TalkArtLayoutProps {
   phase: 'START' | 'QUESTIONS' | 'GENERATION' | 'RESULT'
 }
 
-export const TalkArtLayout: React.FC<TalkArtLayoutProps> = ({ children, phase }) => {
+export const TalkArtLayout: React.FC<TalkArtLayoutProps> = ({
+  children,
+  phase,
+}) => {
   return (
     <div className="relative min-h-screen w-full overflow-hidden">
       {/* ヘッダー */}
@@ -22,9 +25,7 @@ export const TalkArtLayout: React.FC<TalkArtLayoutProps> = ({ children, phase })
 
       {/* メインコンテンツ */}
       <main className="relative z-10 flex items-center justify-center min-h-screen">
-        <div className="w-full max-w-4xl mx-auto p-4">
-          {children}
-        </div>
+        <div className="w-full max-w-4xl mx-auto p-4">{children}</div>
       </main>
 
       {/* フッター */}
@@ -51,9 +52,7 @@ export const TalkArtLayout: React.FC<TalkArtLayoutProps> = ({ children, phase })
               >
                 {index + 1}
               </div>
-              {index < 3 && (
-                <div className="w-16 h-0.5 bg-gray-400" />
-              )}
+              {index < 3 && <div className="w-16 h-0.5 bg-gray-400" />}
             </div>
           ))}
         </div>
