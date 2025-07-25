@@ -9,6 +9,9 @@ import { PresetQuestionButtons } from './presetQuestionButtons'
 import { SlideText } from './slideText'
 import { isMultiModalAvailable } from '@/features/constants/aiModels'
 import { AIService } from '@/features/constants/settings'
+import { TalkArtModeButton } from './talkart/TalkArtModeButton'
+import { TalkArtChoiceButtons } from './talkart/TalkArtChoiceButtons'
+import { useTalkArtStore } from '@/stores/talkart/talkArtStore'
 
 export const Form = () => {
   const modalImage = homeStore((s) => s.modalImage)
@@ -24,6 +27,7 @@ export const Form = () => {
   const enableMultiModal = settingsStore((s) => s.enableMultiModal)
   const [delayedText, setDelayedText] = useState('')
   const handleSendChat = handleSendChatFn()
+  const { isActive: isTalkArtActive } = useTalkArtStore()
 
   useEffect(() => {
     // テキストと画像がそろったら、チャットを送信
@@ -102,8 +106,18 @@ export const Form = () => {
     <SlideText />
   ) : (
     <>
-      <PresetQuestionButtons onSelectQuestion={hookSendChat} />
-      <MessageInputContainer onChatProcessStart={hookSendChat} />
+      {/* TalkArtモードボタン */}
+      <TalkArtModeButton />
+
+      {/* TalkArtモードの場合は選択肢を表示、通常モードの場合は通常のフォームを表示 */}
+      {isTalkArtActive ? (
+        <TalkArtChoiceButtons />
+      ) : (
+        <>
+          <PresetQuestionButtons onSelectQuestion={hookSendChat} />
+          <MessageInputContainer onChatProcessStart={hookSendChat} />
+        </>
+      )}
     </>
   )
 }

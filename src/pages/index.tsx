@@ -12,6 +12,7 @@ import Live2DViewer from '@/components/live2DViewer'
 import { Toasts } from '@/components/toasts'
 import { WebSocketManager } from '@/components/websocketManager'
 import CharacterPresetMenu from '@/components/characterPresetMenu'
+import { TalkArtIntegration } from '@/features/talkart/integration/TalkArtIntegration'
 import homeStore from '@/features/stores/home'
 import settingsStore from '@/features/stores/settings'
 import '@/lib/i18n'
@@ -111,15 +112,7 @@ const Home = () => {
       <WebSocketManager />
       <YoutubeManager />
       <CharacterPresetMenu />
-
-      {/* TalkArt体験へのリンク */}
-      <div className="absolute top-4 right-4 z-50">
-        <Link href="/talkart">
-          <button className="bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white font-bold py-2 px-4 rounded-full shadow-lg transition-all duration-300 hover:scale-105">
-            🎨 TalkArt体験
-          </button>
-        </Link>
-      </div>
+      <TalkArtIntegration />
     </div>
   )
 }
