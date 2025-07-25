@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { GetServerSideProps } from 'next'
 import { useRouter } from 'next/router'
-import { serverSideTranslations } from 'next-i18next/serverSideTranslations'
 import { GeneratedArtwork } from '@/features/talkart/types'
 import { TalkArtLayout } from '@/components/talkart/TalkArtLayout'
 import { TalkArtBackground } from '@/components/talkart/TalkArtBackground'
@@ -193,14 +192,12 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ artworkId }) => {
 
 export const getServerSideProps: GetServerSideProps = async ({
   params,
-  locale,
 }) => {
   const artworkId = params?.id as string
 
   return {
     props: {
       artworkId,
-      ...(await serverSideTranslations(locale ?? 'ja', ['common', 'talkart'])),
     },
   }
 }

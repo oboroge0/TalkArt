@@ -1,6 +1,4 @@
 import React from 'react'
-import { GetStaticProps } from 'next'
-import { serverSideTranslations } from 'next-i18next/serverSideTranslations'
 import { ExperienceFlowManager } from '@/features/talkart/flow/ExperienceFlowManager'
 import { GeneratedArtwork } from '@/features/talkart/types'
 
@@ -25,12 +23,5 @@ const TalkArtPage: React.FC = () => {
   )
 }
 
-export const getStaticProps: GetStaticProps = async ({ locale }) => {
-  return {
-    props: {
-      ...(await serverSideTranslations(locale ?? 'ja', ['common', 'talkart'])),
-    },
-  }
-}
 
 export default TalkArtPage
