@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import Link from 'next/link'
 import { Form } from '@/components/form'
 import MessageReceiver from '@/components/messageReceiver'
 import { Introduction } from '@/components/introduction'
@@ -110,6 +111,15 @@ const Home = () => {
       <WebSocketManager />
       <YoutubeManager />
       <CharacterPresetMenu />
+
+      {/* TalkArt体験へのリンク */}
+      <div className="absolute top-4 right-4 z-50">
+        <Link href="/talkart">
+          <button className="bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white font-bold py-2 px-4 rounded-full shadow-lg transition-all duration-300 hover:scale-105">
+            🎨 TalkArt体験
+          </button>
+        </Link>
+      </div>
     </div>
   )
 }
