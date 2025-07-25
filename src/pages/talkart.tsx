@@ -23,5 +23,4 @@ const TalkArtPage: React.FC = () => {
   )
 }
 
-
 export default TalkArtPage

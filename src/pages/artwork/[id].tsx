@@ -190,9 +190,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ artworkId }) => {
   )
 }
 
-export const getServerSideProps: GetServerSideProps = async ({
-  params,
-}) => {
+export const getServerSideProps: GetServerSideProps = async ({ params }) => {
   const artworkId = params?.id as string
 
   return {
