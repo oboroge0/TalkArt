@@ -68,25 +68,30 @@ export class ArtGenerator {
       throw new Error('OpenAI API key is not configured')
     }
 
-    const response = await fetch('https://api.openai.com/v1/images/generations', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: this.config.model,
-        prompt: request.conversationSummary,
-        n: 1,
-        size: this.config.size,
-        quality: this.config.quality,
-        style: 'vivid',
-      }),
-    })
+    const response = await fetch(
+      'https://api.openai.com/v1/images/generations',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: this.config.model,
+          prompt: request.conversationSummary,
+          n: 1,
+          size: this.config.size,
+          quality: this.config.quality,
+          style: 'vivid',
+        }),
+      }
+    )
 
     if (!response.ok) {
       const error = await response.json()
-      throw new Error(`DALL-E API error: ${error.error?.message || 'Unknown error'}`)
+      throw new Error(
+        `DALL-E API error: ${error.error?.message || 'Unknown error'}`
+      )
     }
 
     const data = await response.json()

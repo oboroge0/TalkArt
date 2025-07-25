@@ -95,7 +95,7 @@ export const TalkArtGallery: React.FC<TalkArtGalleryProps> = ({
                   handleImageLoad(item.artwork.id)
                 }}
               />
-              
+
               {/* ホバーオーバーレイ */}
               <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300 flex items-center justify-center">
                 <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
@@ -135,14 +135,16 @@ export const TalkArtGallery: React.FC<TalkArtGalleryProps> = ({
                 })}
               </p>
               <div className="flex flex-wrap gap-1">
-                {item.artwork.metadata.themes.slice(0, 3).map((theme, index) => (
-                  <span
-                    key={index}
-                    className="inline-block bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded-full"
-                  >
-                    {theme}
-                  </span>
-                ))}
+                {item.artwork.metadata.themes
+                  .slice(0, 3)
+                  .map((theme, index) => (
+                    <span
+                      key={index}
+                      className="inline-block bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded-full"
+                    >
+                      {theme}
+                    </span>
+                  ))}
               </div>
             </div>
           </div>

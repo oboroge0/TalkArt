@@ -17,9 +17,7 @@ export class TalkArtAIAdapter {
   }
 
   // 会話から芸術的なプロンプトを生成
-  async generateArtisticPrompt(
-    responses: ConversationResponse[]
-  ): Promise<{
+  async generateArtisticPrompt(responses: ConversationResponse[]): Promise<{
     prompt: string
     analysis: {
       emotion: string

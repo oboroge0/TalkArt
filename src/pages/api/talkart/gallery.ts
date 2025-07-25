@@ -42,10 +42,7 @@ async function handleGetGallery(
       (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
     )
 
-    const paginatedItems = sortedItems.slice(
-      offsetNum,
-      offsetNum + limitNum
-    )
+    const paginatedItems = sortedItems.slice(offsetNum, offsetNum + limitNum)
 
     return res.status(200).json({
       success: true,
@@ -90,7 +87,7 @@ async function handleAddToGallery(
       if (typeof artwork.createdAt === 'string') {
         artwork.createdAt = new Date(artwork.createdAt)
       }
-      
+
       galleryItems.push(artwork)
 
       // メモリ制限（最新100件のみ保持）

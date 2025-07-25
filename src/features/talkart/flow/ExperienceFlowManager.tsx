@@ -7,7 +7,11 @@ import { TalkArtBackground } from '@/components/talkart/TalkArtBackground'
 import { TalkArtForm } from '@/components/talkart/TalkArtForm'
 import { StartButton } from '@/components/talkart/TalkArtButton'
 import { TalkArtGalleryMini } from '@/components/talkart/TalkArtGallery'
-import { ExperiencePhase, ConversationResponse, GeneratedArtwork } from '@/features/talkart/types'
+import {
+  ExperiencePhase,
+  ConversationResponse,
+  GeneratedArtwork,
+} from '@/features/talkart/types'
 
 interface ExperienceFlowManagerProps {
   onComplete?: (artwork: GeneratedArtwork) => void
@@ -49,7 +53,12 @@ export const ExperienceFlowManager: React.FC<ExperienceFlowManagerProps> = ({
       setPhase(nextPhase)
       setTransitioning(false)
     },
-    [setPhase, setTransitioning, setError, config.animation.fadeTransitionDuration]
+    [
+      setPhase,
+      setTransitioning,
+      setError,
+      config.animation.fadeTransitionDuration,
+    ]
   )
 
   // 体験開始
@@ -115,13 +124,23 @@ export const ExperienceFlowManager: React.FC<ExperienceFlowManagerProps> = ({
         }, 1000)
       } catch (error) {
         console.error('Art generation error:', error)
-        const errorMessage = error instanceof Error ? error.message : 'アート生成中にエラーが発生しました'
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : 'アート生成中にエラーが発生しました'
         setError(errorMessage)
         setIsGenerating(false)
         onError?.(errorMessage)
       }
     },
-    [currentSession, transitionToPhase, setGeneratedArtwork, setError, onComplete, onError]
+    [
+      currentSession,
+      transitionToPhase,
+      setGeneratedArtwork,
+      setError,
+      onComplete,
+      onError,
+    ]
   )
 
   // ギャラリーへの追加
@@ -248,7 +267,9 @@ export const ExperienceFlowManager: React.FC<ExperienceFlowManagerProps> = ({
                       className="w-full h-auto rounded-lg"
                     />
                     <div className="mt-4 text-sm text-gray-600">
-                      生成時間: {currentSession.generatedArtwork.metadata.generationTime}ms
+                      生成時間:{' '}
+                      {currentSession.generatedArtwork.metadata.generationTime}
+                      ms
                     </div>
                   </div>
                 </div>
@@ -287,7 +308,9 @@ export const ExperienceFlowManager: React.FC<ExperienceFlowManagerProps> = ({
         <TalkArtBackground />
         <div className="text-center">
           <div className="text-6xl mb-4">⚠️</div>
-          <h2 className="text-2xl font-bold text-white mb-4">エラーが発生しました</h2>
+          <h2 className="text-2xl font-bold text-white mb-4">
+            エラーが発生しました
+          </h2>
           <p className="text-gray-200 mb-8">{flowState.error}</p>
           <button
             onClick={handleRestart}
@@ -302,8 +325,8 @@ export const ExperienceFlowManager: React.FC<ExperienceFlowManagerProps> = ({
 
   return (
     <TalkArtLayout phase={flowState.currentPhase}>
-      <TalkArtBackground 
-        variant={flowState.currentPhase === 'RESULT' ? 'fireworks' : 'default'} 
+      <TalkArtBackground
+        variant={flowState.currentPhase === 'RESULT' ? 'fireworks' : 'default'}
       />
       {renderPhaseContent()}
     </TalkArtLayout>
