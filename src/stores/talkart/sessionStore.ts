@@ -14,6 +14,11 @@ interface SessionState {
   // 体験フロー状態
   flowState: ExperienceFlowState
 
+  // 便利なゲッター
+  phase: ExperiencePhase
+  sessionId: string
+  conversationResponses: ConversationResponse[]
+
   // アクション
   startSession: () => void
   endSession: () => void
@@ -41,6 +46,17 @@ const initialFlowState: ExperienceFlowState = {
 export const useSessionStore = create<SessionState>((set, get) => ({
   currentSession: null,
   flowState: initialFlowState,
+
+  // ゲッター
+  get phase() {
+    return get().flowState.currentPhase
+  },
+  get sessionId() {
+    return get().currentSession?.sessionId || ''
+  },
+  get conversationResponses() {
+    return get().currentSession?.conversationResponses || []
+  },
 
   startSession: () => {
     const sessionId = generateSessionId()

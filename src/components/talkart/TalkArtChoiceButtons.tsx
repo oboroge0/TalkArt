@@ -6,10 +6,10 @@ import { useTalkArtAudio } from '@/hooks/useTalkArtAudio'
 
 export const TalkArtChoiceButtons: React.FC = () => {
   const { isActive, currentQuestion } = useTalkArtStore()
-  const { phase, addConversationResponse } = useSessionStore()
+  const { flowState, addConversationResponse } = useSessionStore()
   const { playClickSound } = useTalkArtAudio()
 
-  if (!isActive || phase !== 'QUESTIONS' || !currentQuestion) {
+  if (!isActive || flowState.currentPhase !== 'QUESTIONS' || !currentQuestion) {
     return null
   }
 
@@ -22,7 +22,8 @@ export const TalkArtChoiceButtons: React.FC = () => {
       choices: currentQuestion.choices,
       selectedChoice: choiceIndex,
       selectedAnswer: currentQuestion.choices[choiceIndex],
-      timestamp: new Date(),
+      timestamp: Date.now(),
+      stepNumber: currentQuestion.stepNumber,
     }
 
     addConversationResponse(response)
@@ -40,7 +41,7 @@ export const TalkArtChoiceButtons: React.FC = () => {
 
         {/* 選択肢ボタン */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {currentQuestion.choices.map((choice, index) => (
+          {currentQuestion.choices.map((choice: string, index: number) => (
             <HoverEffect key={index} scale={1.05}>
               <button
                 onClick={() => handleChoice(index)}

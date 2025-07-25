@@ -1,5 +1,11 @@
 import { create } from 'zustand'
-import { TalkArtQuestion } from '@/features/talkart/types'
+
+interface TalkArtQuestion {
+  id: string
+  stepNumber: number
+  question: string
+  choices: string[]
+}
 
 interface TalkArtStore {
   // TalkArtモードの状態

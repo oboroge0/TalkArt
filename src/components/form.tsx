@@ -11,7 +11,11 @@ import { isMultiModalAvailable } from '@/features/constants/aiModels'
 import { AIService } from '@/features/constants/settings'
 import { TalkArtModeButton } from './talkart/TalkArtModeButton'
 import { TalkArtChoiceButtons } from './talkart/TalkArtChoiceButtons'
+import { TalkArtResultDisplay } from './talkart/TalkArtResultDisplay'
+import { TalkArtGalleryButton } from './talkart/TalkArtGalleryButton'
 import { useTalkArtStore } from '@/stores/talkart/talkArtStore'
+import { useSessionStore } from '@/stores/talkart/sessionStore'
+import { LoadingSpinner } from './talkart/TalkArtAnimations'
 
 export const Form = () => {
   const modalImage = homeStore((s) => s.modalImage)
@@ -28,6 +32,7 @@ export const Form = () => {
   const [delayedText, setDelayedText] = useState('')
   const handleSendChat = handleSendChatFn()
   const { isActive: isTalkArtActive } = useTalkArtStore()
+  const { flowState } = useSessionStore()
 
   useEffect(() => {
     // テキストと画像がそろったら、チャットを送信
@@ -106,12 +111,30 @@ export const Form = () => {
     <SlideText />
   ) : (
     <>
-      {/* TalkArtモードボタン */}
-      <TalkArtModeButton />
+      {/* TalkArtボタンコンテナ */}
+      <div className="flex gap-4 mb-4">
+        <div className="flex-1">
+          <TalkArtModeButton />
+        </div>
+        <div className="flex-1">
+          <TalkArtGalleryButton />
+        </div>
+      </div>
 
-      {/* TalkArtモードの場合は選択肢を表示、通常モードの場合は通常のフォームを表示 */}
+      {/* TalkArtモードの場合はフェーズに応じて表示を切り替え */}
       {isTalkArtActive ? (
-        <TalkArtChoiceButtons />
+        <>
+          {flowState.currentPhase === 'QUESTIONS' && <TalkArtChoiceButtons />}
+          {flowState.currentPhase === 'GENERATION' && (
+            <div className="text-center py-8">
+              <LoadingSpinner
+                size="large"
+                text="あなただけの夏祭りアートを描いています..."
+              />
+            </div>
+          )}
+          {flowState.currentPhase === 'RESULT' && <TalkArtResultDisplay />}
+        </>
       ) : (
         <>
           <PresetQuestionButtons onSelectQuestion={hookSendChat} />
