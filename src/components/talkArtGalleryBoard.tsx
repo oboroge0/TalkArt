@@ -1,0 +1,697 @@
+import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { ArtStorage, StoredArtwork } from '@/features/talkart/artStorage'
+import {
+  GalleryLayoutEngine,
+  LayoutPosition,
+  createPaperFlutterAnimation,
+} from '@/features/talkart/galleryLayoutEngine'
+import {
+  TapeDecoration,
+  PinDecoration,
+  HandwrittenHeart,
+  PaperCornerFold,
+  BulletinBoardTexture,
+} from './talkArtDecorations'
+import { talkArtAudioManager } from '@/features/talkart/audioManager'
+import { talkArtSoundEffects } from '@/features/talkart/soundEffects'
+import {
+  realtimeGalleryService,
+  RealtimeEvent,
+} from '@/features/talkart/realtimeService'
+import { TalkArtFlyingAnimation } from './talkArtFlyingAnimation'
+
+interface TalkArtGalleryBoardProps {
+  onClose: () => void
+  onSelectArtwork?: (artwork: StoredArtwork) => void
+  shouldRefresh?: boolean
+  onRefreshComplete?: () => void
+}
+
+export const TalkArtGalleryBoard: React.FC<TalkArtGalleryBoardProps> = ({
+  onClose,
+  onSelectArtwork,
+  shouldRefresh = false,
+  onRefreshComplete,
+}) => {
+  const [artworks, setArtworks] = useState<StoredArtwork[]>([])
+  const [layouts, setLayouts] = useState<Map<string, LayoutPosition>>(new Map())
+  const [selectedArtwork, setSelectedArtwork] = useState<StoredArtwork | null>(
+    null
+  )
+  const [hoveredId, setHoveredId] = useState<string | null>(null)
+  const [filter, setFilter] = useState<'all' | 'today' | 'featured'>('all')
+  const [stats, setStats] = useState({ total: 0, today: 0, featured: 0 })
+  const [isReorganizing, setIsReorganizing] = useState(false)
+  const [realtimeEnabled, setRealtimeEnabled] = useState(true)
+  const [incomingArtwork, setIncomingArtwork] = useState<StoredArtwork | null>(
+    null
+  )
+  const [flyingStartPosition, setFlyingStartPosition] = useState({ x: 0, y: 0 })
+
+  const boardRef = useRef<HTMLDivElement>(null)
+  const layoutEngineRef = useRef<GalleryLayoutEngine | null>(null)
+  const artStorageRef = useRef(new ArtStorage())
+
+  const loadGallery = useCallback(() => {
+    const allArtworks = artStorageRef.current.getGallery()
+    const galleryStats = artStorageRef.current.getGalleryStats()
+    setStats(galleryStats)
+
+    let filtered = allArtworks
+    if (filter === 'today') {
+      const today = new Date().toDateString()
+      filtered = allArtworks.filter(
+        (artwork) =>
+          new Date(artwork.metadata.createdAt).toDateString() === today
+      )
+    } else if (filter === 'featured') {
+      filtered = artStorageRef.current.getFeaturedArtworks()
+    }
+
+    setArtworks(filtered)
+    calculateLayouts(filtered)
+  }, [filter])
+
+  const calculateLayouts = (artworkList: StoredArtwork[]) => {
+    if (!layoutEngineRef.current) return
+
+    layoutEngineRef.current.reset()
+    const newLayouts = new Map<string, LayoutPosition>()
+
+    artworkList.forEach((artwork, index) => {
+      const position = layoutEngineRef.current!.generatePosition(index)
+      newLayouts.set(artwork.id, position)
+    })
+
+    setLayouts(newLayouts)
+  }
+
+  const recalculateLayouts = () => {
+    calculateLayouts(artworks)
+  }
+
+  const triggerReorganization = () => {
+    setIsReorganizing(true)
+    setTimeout(() => {
+      recalculateLayouts()
+      setIsReorganizing(false)
+    }, 500)
+  }
+
+  // Initialize layout engine
+  useEffect(() => {
+    if (boardRef.current) {
+      const rect = boardRef.current.getBoundingClientRect()
+      layoutEngineRef.current = new GalleryLayoutEngine(
+        rect.width - 100, // Padding
+        rect.height - 150, // Header space
+        200,
+        200
+      )
+      loadGallery()
+
+      // Check for new artwork arrival
+      const urlParams = new URLSearchParams(window.location.search)
+      if (urlParams.get('from') === 'result') {
+        triggerReorganization()
+      }
+    }
+
+    // Handle resize
+    const handleResize = () => {
+      if (boardRef.current && layoutEngineRef.current) {
+        const rect = boardRef.current.getBoundingClientRect()
+        layoutEngineRef.current.updateDimensions(
+          rect.width - 100,
+          rect.height - 150
+        )
+        recalculateLayouts()
+      }
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [loadGallery])
+
+  // Handle refresh request from parent
+  useEffect(() => {
+    if (shouldRefresh && boardRef.current && layoutEngineRef.current) {
+      // Small delay to ensure artwork is saved to localStorage
+      setTimeout(() => {
+        loadGallery()
+        triggerReorganization()
+        if (onRefreshComplete) {
+          onRefreshComplete()
+        }
+      }, 100)
+    }
+  }, [shouldRefresh, onRefreshComplete, loadGallery])
+
+  // Reload gallery when filter changes
+  useEffect(() => {
+    if (boardRef.current && layoutEngineRef.current) {
+      loadGallery()
+    }
+  }, [filter, loadGallery])
+
+  // Setup realtime connection
+  useEffect(() => {
+    if (!realtimeEnabled) return
+
+    // Connect to SSE
+    realtimeGalleryService.connect()
+
+    // Subscribe to events
+    const unsubscribe = realtimeGalleryService.subscribe(
+      (event: RealtimeEvent) => {
+        switch (event.type) {
+          case 'connected':
+            console.log('Connected to realtime gallery updates')
+            break
+
+          case 'new_artwork':
+            if (event.artwork) {
+              handleIncomingArtwork(event.artwork)
+            }
+            break
+
+          case 'recent':
+            if (event.artworks) {
+              console.log(`Received ${event.artworks.length} recent artworks`)
+            }
+            break
+        }
+      }
+    )
+
+    return () => {
+      unsubscribe()
+      realtimeGalleryService.disconnect()
+    }
+  }, [realtimeEnabled])
+
+  const handleIncomingArtwork = (artwork: StoredArtwork) => {
+    // Calculate random start position from edges
+    const side = Math.floor(Math.random() * 4)
+    let startX = 0,
+      startY = 0
+
+    switch (side) {
+      case 0: // Top
+        startX = Math.random() * window.innerWidth
+        startY = -100
+        break
+      case 1: // Right
+        startX = window.innerWidth + 100
+        startY = Math.random() * window.innerHeight
+        break
+      case 2: // Bottom
+        startX = Math.random() * window.innerWidth
+        startY = window.innerHeight + 100
+        break
+      case 3: // Left
+        startX = -100
+        startY = Math.random() * window.innerHeight
+        break
+    }
+
+    setFlyingStartPosition({ x: startX, y: startY })
+    setIncomingArtwork(artwork)
+
+    // Play notification sound
+    talkArtSoundEffects.playCorkPop()
+  }
+
+  const handleIncomingArtworkComplete = () => {
+    if (incomingArtwork) {
+      // Save the artwork
+      artStorageRef.current.saveArtwork(incomingArtwork)
+
+      // Reload gallery to show new artwork
+      loadGallery()
+      triggerReorganization()
+
+      setIncomingArtwork(null)
+    }
+  }
+
+  const handleLike = useCallback(
+    (e: React.MouseEvent, artwork: StoredArtwork) => {
+      e.stopPropagation()
+      const newLikes = (artwork.likes || 0) + 1
+      artStorageRef.current.updateArtwork(artwork.id, { likes: newLikes })
+
+      // Play a subtle sound effect
+      playPaperSound()
+
+      // Update local state
+      setArtworks((prev) =>
+        prev.map((a) => (a.id === artwork.id ? { ...a, likes: newLikes } : a))
+      )
+    },
+    []
+  )
+
+  const handleToggleFeatured = useCallback(
+    (artwork: StoredArtwork) => {
+      artStorageRef.current.updateArtwork(artwork.id, {
+        featured: !artwork.featured,
+      })
+      playPinSound()
+      loadGallery()
+    },
+    [filter]
+  )
+
+  const handleDelete = useCallback(
+    (artwork: StoredArtwork) => {
+      if (confirm('このアートワークを削除しますか？')) {
+        artStorageRef.current.deleteArtwork(artwork.id)
+        setSelectedArtwork(null)
+        playTapeSound()
+        loadGallery()
+      }
+    },
+    [filter]
+  )
+
+  // Sound effects
+  const playPaperSound = async () => {
+    await talkArtSoundEffects.playPaperRustle()
+  }
+
+  const playPinSound = async () => {
+    await talkArtSoundEffects.playPinPush()
+  }
+
+  const playTapeSound = async () => {
+    await talkArtSoundEffects.playTapeRip()
+  }
+
+  const playFlipSound = async () => {
+    await talkArtSoundEffects.playPaperFlip()
+  }
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('ja-JP', {
+      month: 'short',
+      day: 'numeric',
+    })
+  }
+
+  // Generate flutter animation styles
+  const getFlutterStyle = (baseRotation: number) => {
+    const styleTag = document.createElement('style')
+    styleTag.textContent = createPaperFlutterAnimation(baseRotation, 0.5)
+    return styleTag
+  }
+
+  return (
+    <div className="fixed inset-0 bg-amber-50 z-50 overflow-hidden animate-fadeIn">
+      <BulletinBoardTexture />
+
+      {/* Cork board texture background */}
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundImage: `
+            repeating-linear-gradient(
+              45deg,
+              transparent,
+              transparent 10px,
+              rgba(139, 115, 85, 0.03) 10px,
+              rgba(139, 115, 85, 0.03) 20px
+            )
+          `,
+          backgroundColor: '#D2B48C',
+        }}
+      />
+
+      {/* Header */}
+      <div className="relative bg-amber-800/10 backdrop-blur-sm p-4 border-b-4 border-amber-700/20 shadow-lg">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <h2
+            className="text-3xl font-bold text-amber-900"
+            style={{ fontFamily: 'serif' }}
+          >
+            🎋 夏祭りの思い出掲示板 🎋
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-amber-700 hover:text-amber-900 transition-colors bg-white/50 rounded-full p-2"
+          >
+            <svg
+              className="w-8 h-8"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+
+        {/* Filters and Realtime Toggle */}
+        <div className="max-w-7xl mx-auto mt-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            {(['all', 'today', 'featured'] as const).map((filterType) => (
+              <button
+                key={filterType}
+                onClick={() => {
+                  setFilter(filterType)
+                }}
+                className={`px-4 py-2 rounded-full font-medium transition-all transform hover:scale-105 ${
+                  filter === filterType
+                    ? 'bg-yellow-400 text-amber-900 shadow-md'
+                    : 'bg-white/50 text-amber-700 hover:bg-white/70'
+                }`}
+                style={{ fontFamily: 'sans-serif' }}
+              >
+                {filterType === 'all' && `すべて (${stats.total})`}
+                {filterType === 'today' && `今日 (${stats.today})`}
+                {filterType === 'featured' && `お気に入り (${stats.featured})`}
+              </button>
+            ))}
+          </div>
+
+          {/* Realtime Toggle */}
+          <div className="flex items-center gap-2 bg-white/50 px-4 py-2 rounded-full">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={realtimeEnabled}
+                onChange={(e) => {
+                  setRealtimeEnabled(e.target.checked)
+                  realtimeGalleryService.setEnabled(e.target.checked)
+                }}
+                className="w-4 h-4 text-yellow-400 rounded focus:ring-yellow-500"
+              />
+              <span className="text-amber-700 font-medium">
+                リアルタイム更新
+              </span>
+            </label>
+            {realtimeGalleryService.isConnected() && (
+              <span
+                className="w-2 h-2 bg-green-500 rounded-full animate-pulse"
+                title="接続中"
+              />
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Gallery Board */}
+      <div
+        ref={boardRef}
+        className="relative h-[calc(100vh-120px)] p-12 overflow-auto"
+      >
+        {artworks.length === 0 ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center p-8 bg-white/50 rounded-lg shadow-lg">
+              <p className="text-xl text-amber-700">
+                まだアートワークがありません
+              </p>
+              <p className="text-sm text-amber-600 mt-2">
+                最初の作品を作ってみましょう！
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="relative w-full h-full">
+            {artworks.map((artwork) => {
+              const layout = layouts.get(artwork.id)
+              if (!layout) return null
+
+              const isHovered = hoveredId === artwork.id
+              // Use artwork ID to generate consistent colors
+              const decorationColorIndex = artwork.id.charCodeAt(0) % 3
+              const pinColorIndex = artwork.id.charCodeAt(1) % 4
+              const decorationColors = ['yellow', 'white', 'pink'] as const
+              const pinColors = ['red', 'blue', 'green', 'yellow'] as const
+              const decorationColor = decorationColors[decorationColorIndex]
+              const pinColor = pinColors[pinColorIndex]
+
+              return (
+                <div
+                  key={artwork.id}
+                  className="absolute cursor-pointer transition-all duration-300"
+                  style={{
+                    left: layout.x,
+                    top: layout.y,
+                    transform: `
+                      translate(-50%, -50%) 
+                      rotate(${layout.rotation}deg) 
+                      scale(${layout.scale})
+                    `,
+                    zIndex: isHovered ? 1000 : layout.zIndex,
+                    transformOrigin: 'center center',
+                    transition: isReorganizing
+                      ? 'all 1s cubic-bezier(0.4, 0, 0.2, 1)'
+                      : 'all 0.3s ease',
+                  }}
+                  onMouseEnter={() => {
+                    setHoveredId(artwork.id)
+                    playPaperSound()
+                  }}
+                  onMouseLeave={() => setHoveredId(null)}
+                  onClick={() => {
+                    playFlipSound()
+                    setSelectedArtwork(artwork)
+                    setHoveredId(null) // Clear hover state when clicking
+                  }}
+                >
+                  {/* Shadow */}
+                  <div
+                    className="absolute inset-0 bg-black/20 blur-lg"
+                    style={{
+                      transform: 'translate(4px, 4px)',
+                      borderRadius: '8px',
+                    }}
+                  />
+
+                  {/* Photo container */}
+                  <div
+                    className="relative bg-white p-2 rounded-lg shadow-xl"
+                    style={{
+                      width: '200px',
+                      height: '200px',
+                      transform: isHovered ? 'scale(1.05)' : 'scale(1)',
+                      boxShadow: isHovered
+                        ? '0 15px 30px rgba(0,0,0,0.3)'
+                        : '0 10px 25px rgba(0,0,0,0.2)',
+                      transition: 'all 0.3s ease',
+                    }}
+                  >
+                    {/* Image with relative positioning */}
+                    <div className="relative">
+                      <img
+                        src={artwork.imageUrl}
+                        alt={artwork.prompt}
+                        className="w-full h-[160px] object-cover rounded"
+                        style={{
+                          filter: isHovered
+                            ? 'brightness(1.05)'
+                            : 'brightness(1)',
+                        }}
+                      />
+                    </div>
+
+                    {/* Decorations (above image) */}
+                    {layout.decorationType === 'tape' && (
+                      <TapeDecoration
+                        rotation={layout.tapeRotation}
+                        color={decorationColor}
+                      />
+                    )}
+                    {layout.decorationType === 'pin' && (
+                      <PinDecoration color={pinColor} />
+                    )}
+                    {layout.decorationType === 'both' && (
+                      <>
+                        <TapeDecoration
+                          rotation={layout.tapeRotation}
+                          color={decorationColor}
+                        />
+                        <div style={{ transform: 'translateY(160px)' }}>
+                          <TapeDecoration
+                            rotation={-layout.tapeRotation!}
+                            color={
+                              decorationColors[(decorationColorIndex + 1) % 3]
+                            }
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    {/* Paper corner fold */}
+                    {artwork.id.charCodeAt(2) % 3 > 1 && (
+                      <PaperCornerFold
+                        corner={
+                          artwork.id.charCodeAt(3) % 2 === 0
+                            ? 'top-right'
+                            : 'bottom-left'
+                        }
+                        size={25}
+                      />
+                    )}
+
+                    {/* Info overlay */}
+                    <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
+                      <p className="text-xs text-gray-600 truncate max-w-[120px]">
+                        {formatDate(artwork.metadata.createdAt.toString())}
+                      </p>
+                      <button
+                        onClick={(e) => handleLike(e, artwork)}
+                        className="flex items-center gap-1 bg-white/80 rounded-full px-2 py-1"
+                      >
+                        <HandwrittenHeart filled={!!artwork.likes} size={16} />
+                        <span className="text-xs text-gray-700">
+                          {artwork.likes || 0}
+                        </span>
+                      </button>
+                    </div>
+
+                    {/* Featured badge */}
+                    {artwork.featured && (
+                      <div className="absolute top-2 right-2 bg-yellow-400 rounded-full p-1 shadow-md">
+                        <svg
+                          className="w-4 h-4 text-amber-900"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Selected artwork modal */}
+      {selectedArtwork && (
+        <div
+          className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4 animate-fadeIn"
+          onClick={() => {
+            setSelectedArtwork(null)
+            setHoveredId(null) // Clear hover state when closing modal
+          }}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-4xl max-h-[90vh] overflow-y-auto animate-slideInUp shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative">
+              <img
+                src={selectedArtwork.imageUrl}
+                alt={selectedArtwork.prompt}
+                className="w-full h-auto rounded-t-2xl"
+              />
+              <button
+                onClick={() => {
+                  setSelectedArtwork(null)
+                  setHoveredId(null) // Clear hover state when closing with button
+                }}
+                className="absolute top-4 right-4 bg-black/50 text-white rounded-full p-2 hover:bg-black/70 transition-colors"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-6">
+              <h3 className="text-xl font-bold text-amber-900 mb-3">
+                アートワーク詳細
+              </h3>
+
+              <div className="space-y-3 text-gray-700">
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">プロンプト</p>
+                  <p className="text-base">{selectedArtwork.prompt}</p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">作成日時</p>
+                  <p className="text-base">
+                    {new Date(
+                      selectedArtwork.metadata.createdAt
+                    ).toLocaleString('ja-JP')}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <p className="text-sm text-gray-500">いいね:</p>
+                  <div className="flex items-center gap-1">
+                    <HandwrittenHeart filled size={20} />
+                    <p className="text-base font-medium">
+                      {selectedArtwork.likes || 0}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => handleToggleFeatured(selectedArtwork)}
+                  className={`flex-1 py-2 px-4 rounded-full transition-colors flex items-center justify-center gap-2 ${
+                    selectedArtwork.featured
+                      ? 'bg-yellow-400 text-amber-900 hover:bg-yellow-500'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
+                  {selectedArtwork.featured
+                    ? 'お気に入り解除'
+                    : 'お気に入りに追加'}
+                </button>
+
+                <button
+                  onClick={() => handleDelete(selectedArtwork)}
+                  className="bg-red-500 text-white py-2 px-4 rounded-full hover:bg-red-600 transition-colors"
+                >
+                  削除
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Incoming Artwork Animation */}
+      {incomingArtwork && (
+        <TalkArtFlyingAnimation
+          artwork={incomingArtwork}
+          startPosition={flyingStartPosition}
+          onComplete={handleIncomingArtworkComplete}
+        />
+      )}
+    </div>
+  )
+}

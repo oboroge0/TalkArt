@@ -1,0 +1,21 @@
+# Completion Sound Placeholder
+
+Place your completion sound file here as `completion.mp3`
+
+## Recommended sound characteristics:
+- Duration: 1-3 seconds
+- Style: Summer festival theme (wind chimes, bells, or festive sounds)
+- Format: MP3
+- Size: < 500KB
+
+## Free sound resources:
+- https://freesound.org/
+- https://zapsplat.com/
+- https://soundbible.com/
+
+## Example search terms:
+- "wind chime"
+- "bell completion"
+- "success chime"
+- "japanese bell"
+- "festival sound"
