@@ -32,7 +32,8 @@ const Home = () => {
   const messageReceiverEnabled = settingsStore((s) => s.messageReceiverEnabled)
   const modelType = settingsStore((s) => s.modelType)
   const { t } = useTranslation()
-  const isTalkArtMode = process.env.NEXT_PUBLIC_TALKART_MODE === 'true'
+  // Default to TalkArt mode if not explicitly set to false
+  const isTalkArtMode = process.env.NEXT_PUBLIC_TALKART_MODE !== 'false'
   const characterPresets = [
     {
       key: 'characterPreset1',
