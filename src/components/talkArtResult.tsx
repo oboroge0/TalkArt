@@ -7,12 +7,14 @@ import { useRouter } from 'next/router'
 
 interface TalkArtResultProps {
   artwork: GeneratedArtwork
+  savedInfo: { id: string; shareCode: string } | null
   onReset: () => void
   onViewGallery: () => void
 }
 
 export const TalkArtResult: React.FC<TalkArtResultProps> = ({
   artwork,
+  savedInfo,
   onReset,
   onViewGallery,
 }) => {
@@ -28,8 +30,8 @@ export const TalkArtResult: React.FC<TalkArtResultProps> = ({
   useEffect(() => {
     // Generate share URL
     const baseUrl = window.location.origin
-    const artworkId = artwork.metadata.sessionId
-    const url = `${baseUrl}/gallery/${artworkId}`
+    const shareCode = savedInfo?.shareCode || artwork.metadata.sessionId
+    const url = `${baseUrl}/gallery/${shareCode}`
     setShareUrl(url)
 
     // Generate QR code
@@ -47,7 +49,7 @@ export const TalkArtResult: React.FC<TalkArtResultProps> = ({
     // Hide particles after animation
     const timer = setTimeout(() => setShowParticles(false), 4000)
     return () => clearTimeout(timer)
-  }, [artwork])
+  }, [artwork, savedInfo])
 
   // Download artwork
   const handleDownload = async () => {

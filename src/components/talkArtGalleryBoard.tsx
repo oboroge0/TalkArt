@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { ArtStorage, StoredArtwork } from '@/features/talkart/artStorage'
+import { supabaseArtStorage } from '@/features/talkart/supabaseArtStorage'
+import { TalkArtArtwork } from '@/lib/supabase'
 import {
   GalleryLayoutEngine,
   LayoutPosition,
@@ -15,14 +16,14 @@ import {
 import { talkArtAudioManager } from '@/features/talkart/audioManager'
 import { talkArtSoundEffects } from '@/features/talkart/soundEffects'
 import {
-  realtimeGalleryService,
-  RealtimeEvent,
-} from '@/features/talkart/realtimeService'
+  supabaseRealtimeGalleryService,
+  SupabaseRealtimeEvent,
+} from '@/features/talkart/supabaseRealtimeService'
 import { TalkArtFlyingAnimation } from './talkArtFlyingAnimation'
 
 interface TalkArtGalleryBoardProps {
   onClose: () => void
-  onSelectArtwork?: (artwork: StoredArtwork) => void
+  onSelectArtwork?: (artwork: TalkArtArtwork) => void
   shouldRefresh?: boolean
   onRefreshComplete?: () => void
 }
@@ -33,9 +34,9 @@ export const TalkArtGalleryBoard: React.FC<TalkArtGalleryBoardProps> = ({
   shouldRefresh = false,
   onRefreshComplete,
 }) => {
-  const [artworks, setArtworks] = useState<StoredArtwork[]>([])
+  const [artworks, setArtworks] = useState<TalkArtArtwork[]>([])
   const [layouts, setLayouts] = useState<Map<string, LayoutPosition>>(new Map())
-  const [selectedArtwork, setSelectedArtwork] = useState<StoredArtwork | null>(
+  const [selectedArtwork, setSelectedArtwork] = useState<TalkArtArtwork | null>(
     null
   )
   const [hoveredId, setHoveredId] = useState<string | null>(null)
@@ -43,36 +44,39 @@ export const TalkArtGalleryBoard: React.FC<TalkArtGalleryBoardProps> = ({
   const [stats, setStats] = useState({ total: 0, today: 0, featured: 0 })
   const [isReorganizing, setIsReorganizing] = useState(false)
   const [realtimeEnabled, setRealtimeEnabled] = useState(true)
-  const [incomingArtwork, setIncomingArtwork] = useState<StoredArtwork | null>(
+  const [incomingArtwork, setIncomingArtwork] = useState<TalkArtArtwork | null>(
     null
   )
   const [flyingStartPosition, setFlyingStartPosition] = useState({ x: 0, y: 0 })
 
   const boardRef = useRef<HTMLDivElement>(null)
   const layoutEngineRef = useRef<GalleryLayoutEngine | null>(null)
-  const artStorageRef = useRef(new ArtStorage())
 
-  const loadGallery = useCallback(() => {
-    const allArtworks = artStorageRef.current.getGallery()
-    const galleryStats = artStorageRef.current.getGalleryStats()
-    setStats(galleryStats)
+  const loadGallery = useCallback(async () => {
+    const allArtworks = await supabaseArtStorage.getRecentArtworks(50)
+    const galleryStats = await supabaseArtStorage.getGalleryStats()
+    setStats({
+      total: galleryStats.total,
+      today: galleryStats.today,
+      featured: 0 // Not implemented yet
+    })
 
     let filtered = allArtworks
     if (filter === 'today') {
       const today = new Date().toDateString()
       filtered = allArtworks.filter(
         (artwork) =>
-          new Date(artwork.metadata.createdAt).toDateString() === today
+          new Date(artwork.created_at).toDateString() === today
       )
     } else if (filter === 'featured') {
-      filtered = artStorageRef.current.getFeaturedArtworks()
+      filtered = [] // Not implemented yet
     }
 
     setArtworks(filtered)
     calculateLayouts(filtered)
   }, [filter])
 
-  const calculateLayouts = (artworkList: StoredArtwork[]) => {
+  const calculateLayouts = (artworkList: TalkArtArtwork[]) => {
     if (!layoutEngineRef.current) return
 
     layoutEngineRef.current.reset()
@@ -158,26 +162,38 @@ export const TalkArtGalleryBoard: React.FC<TalkArtGalleryBoardProps> = ({
   useEffect(() => {
     if (!realtimeEnabled) return
 
-    // Connect to SSE
-    realtimeGalleryService.connect()
+    // Connect to Supabase realtime
+    supabaseRealtimeGalleryService.connect()
 
     // Subscribe to events
-    const unsubscribe = realtimeGalleryService.subscribe(
-      (event: RealtimeEvent) => {
+    const unsubscribe = supabaseRealtimeGalleryService.subscribe(
+      (event: SupabaseRealtimeEvent) => {
         switch (event.type) {
-          case 'connected':
-            console.log('Connected to realtime gallery updates')
-            break
-
           case 'new_artwork':
             if (event.artwork) {
-              handleIncomingArtwork(event.artwork)
+              // Reload gallery to show new artwork
+              loadGallery()
+              talkArtSoundEffects.playCorkPop()
             }
             break
 
-          case 'recent':
-            if (event.artworks) {
-              console.log(`Received ${event.artworks.length} recent artworks`)
+          case 'update_artwork':
+            if (event.artwork) {
+              // Update the artwork in the list
+              setArtworks((prev) =>
+                prev.map((art) =>
+                  art.id === event.artwork!.id ? event.artwork! : art
+                )
+              )
+            }
+            break
+
+          case 'delete_artwork':
+            if (event.artwork) {
+              // Remove the artwork from the list
+              setArtworks((prev) =>
+                prev.filter((art) => art.id !== event.artwork!.id)
+              )
             }
             break
         }
@@ -186,11 +202,11 @@ export const TalkArtGalleryBoard: React.FC<TalkArtGalleryBoardProps> = ({
 
     return () => {
       unsubscribe()
-      realtimeGalleryService.disconnect()
+      supabaseRealtimeGalleryService.disconnect()
     }
-  }, [realtimeEnabled])
+  }, [realtimeEnabled, loadGallery])
 
-  const handleIncomingArtwork = (artwork: StoredArtwork) => {
+  const handleIncomingArtwork = (artwork: any) => { // Will convert to TalkArtArtwork format
     // Calculate random start position from edges
     const side = Math.floor(Math.random() * 4)
     let startX = 0,
@@ -224,10 +240,7 @@ export const TalkArtGalleryBoard: React.FC<TalkArtGalleryBoardProps> = ({
 
   const handleIncomingArtworkComplete = () => {
     if (incomingArtwork) {
-      // Save the artwork
-      artStorageRef.current.saveArtwork(incomingArtwork)
-
-      // Reload gallery to show new artwork
+      // Just reload gallery to show new artwork (already saved to Supabase)
       loadGallery()
       triggerReorganization()
 
@@ -236,40 +249,30 @@ export const TalkArtGalleryBoard: React.FC<TalkArtGalleryBoardProps> = ({
   }
 
   const handleLike = useCallback(
-    (e: React.MouseEvent, artwork: StoredArtwork) => {
+    (e: React.MouseEvent, artwork: TalkArtArtwork) => {
       e.stopPropagation()
-      const newLikes = (artwork.likes || 0) + 1
-      artStorageRef.current.updateArtwork(artwork.id, { likes: newLikes })
-
+      // TODO: Implement like functionality with Supabase
+      
       // Play a subtle sound effect
       playPaperSound()
-
-      // Update local state
-      setArtworks((prev) =>
-        prev.map((a) => (a.id === artwork.id ? { ...a, likes: newLikes } : a))
-      )
     },
     []
   )
 
   const handleToggleFeatured = useCallback(
-    (artwork: StoredArtwork) => {
-      artStorageRef.current.updateArtwork(artwork.id, {
-        featured: !artwork.featured,
-      })
+    (artwork: TalkArtArtwork) => {
+      // TODO: Implement featured functionality with Supabase
       playPinSound()
-      loadGallery()
     },
-    [filter]
+    []
   )
 
   const handleDelete = useCallback(
-    (artwork: StoredArtwork) => {
+    (artwork: TalkArtArtwork) => {
       if (confirm('このアートワークを削除しますか？')) {
-        artStorageRef.current.deleteArtwork(artwork.id)
+        // TODO: Implement delete functionality with Supabase
         setSelectedArtwork(null)
         playTapeSound()
-        loadGallery()
       }
     },
     [filter]
@@ -491,7 +494,7 @@ export const TalkArtGalleryBoard: React.FC<TalkArtGalleryBoardProps> = ({
                     {/* Image with relative positioning */}
                     <div className="relative">
                       <img
-                        src={artwork.imageUrl}
+                        src={artwork.image_url}
                         alt={artwork.prompt}
                         className="w-full h-[160px] object-cover rounded"
                         style={{
@@ -544,15 +547,15 @@ export const TalkArtGalleryBoard: React.FC<TalkArtGalleryBoardProps> = ({
                     {/* Info overlay */}
                     <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
                       <p className="text-xs text-gray-600 truncate max-w-[120px]">
-                        {formatDate(artwork.metadata.createdAt.toString())}
+                        {formatDate(artwork.created_at)}
                       </p>
                       <button
                         onClick={(e) => handleLike(e, artwork)}
                         className="flex items-center gap-1 bg-white/80 rounded-full px-2 py-1"
                       >
-                        <HandwrittenHeart filled={!!artwork.likes} size={16} />
+                        <HandwrittenHeart filled={false} size={16} />
                         <span className="text-xs text-gray-700">
-                          {artwork.likes || 0}
+                          {artwork.view_count || 0}
                         </span>
                       </button>
                     </div>
@@ -592,7 +595,7 @@ export const TalkArtGalleryBoard: React.FC<TalkArtGalleryBoardProps> = ({
           >
             <div className="relative">
               <img
-                src={selectedArtwork.imageUrl}
+                src={selectedArtwork.image_url}
                 alt={selectedArtwork.prompt}
                 className="w-full h-auto rounded-t-2xl"
               />
@@ -634,7 +637,7 @@ export const TalkArtGalleryBoard: React.FC<TalkArtGalleryBoardProps> = ({
                   <p className="text-sm text-gray-500 mb-1">作成日時</p>
                   <p className="text-base">
                     {new Date(
-                      selectedArtwork.metadata.createdAt
+                      selectedArtwork.created_at
                     ).toLocaleString('ja-JP')}
                   </p>
                 </div>

@@ -7,7 +7,8 @@ import { useQuestionFlow } from '@/features/talkart/questionFlowManager'
 import { TalkArtQuestionDisplay } from './talkArtQuestionDisplay'
 import { TalkArtParticles } from './talkArtParticles'
 import { ArtGenerator, GeneratedArtwork } from '@/features/talkart/artGenerator'
-import { ArtStorage } from '@/features/talkart/artStorage'
+import { supabaseArtStorage } from '@/features/talkart/supabaseArtStorage'
+import { TalkArtArtwork } from '@/lib/supabase'
 import { TalkArtResult } from './talkArtResult'
 import { talkArtAudioManager } from '@/features/talkart/audioManager'
 import { talkArtSessionManager } from '@/features/talkart/sessionManager'
@@ -19,7 +20,6 @@ const talkartConfig = require('../../talkart.config.js')
 
 // Initialize services
 const artGenerator = new ArtGenerator()
-const artStorage = new ArtStorage()
 
 type ExperiencePhase = 'start' | 'questions' | 'generation' | 'result'
 
@@ -28,6 +28,8 @@ export const TalkArtForm = () => {
   const [currentPhase, setCurrentPhase] = useState<ExperiencePhase>('start')
   const [generatedArtwork, setGeneratedArtwork] =
     useState<GeneratedArtwork | null>(null)
+  const [savedArtworkInfo, setSavedArtworkInfo] = 
+    useState<{ id: string; shareCode: string } | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [showParticles, setShowParticles] = useState(false)
   const [showSessionStats, setShowSessionStats] = useState(false)
@@ -46,8 +48,11 @@ export const TalkArtForm = () => {
 
   // Load gallery stats on mount
   useEffect(() => {
-    const stats = artStorage.getGalleryStats()
-    setGalleryStats(stats)
+    const loadStats = async () => {
+      const stats = await supabaseArtStorage.getGalleryStats()
+      setGalleryStats(stats)
+    }
+    loadStats()
   }, [currentPhase]) // Update when phase changes (after new artwork)
 
   // Handle keyboard shortcuts
@@ -200,18 +205,30 @@ export const TalkArtForm = () => {
         sessionId
       )
 
-      // Save to gallery
-      const savedArtwork = await artStorage.saveArtwork(artwork)
+      // Save to Supabase
+      const savedArtwork = await supabaseArtStorage.saveArtwork(artwork)
 
-      // Update session with artwork ID
-      talkArtSessionManager.setGeneratedArtworkId(savedArtwork.id)
+      if (savedArtwork) {
+        // Update session with artwork ID
+        talkArtSessionManager.setGeneratedArtworkId(savedArtwork.id)
 
-      // Notify realtime service
-      import('@/features/talkart/realtimeService').then(
-        ({ realtimeGalleryService }) => {
-          realtimeGalleryService.notifyNewArtwork(savedArtwork)
-        }
-      )
+        // Store saved artwork info
+        setSavedArtworkInfo({
+          id: savedArtwork.id,
+          shareCode: savedArtwork.share_code || savedArtwork.id
+        })
+
+        // Notify realtime service
+        import('@/features/talkart/realtimeService').then(
+          ({ realtimeGalleryService }) => {
+            realtimeGalleryService.notifyNewArtwork({
+              ...artwork,
+              id: savedArtwork.id,
+              shareCode: savedArtwork.share_code || savedArtwork.id
+            })
+          }
+        )
+      }
 
       // Set artwork first
       setGeneratedArtwork(artwork)
@@ -283,6 +300,7 @@ export const TalkArtForm = () => {
     setCurrentPhase('start')
     questionFlow.stopFlow()
     setGeneratedArtwork(null)
+    setSavedArtworkInfo(null)
     homeStore.setState({ chatLog: [] })
   }
 
@@ -396,6 +414,7 @@ export const TalkArtForm = () => {
             return generatedArtwork ? (
               <TalkArtResult
                 artwork={generatedArtwork}
+                savedInfo={savedArtworkInfo}
                 onReset={resetExperience}
                 onViewGallery={() => {
                   // Gallery handled by flying animation in TalkArtResult

@@ -163,6 +163,12 @@ homeStore.subscribe((state, prevState) => {
     }
 
     saveDebounceTimer = setTimeout(() => {
+      // Skip chat log saving in TalkArt mode
+      const isTalkArtMode = process.env.NEXT_PUBLIC_TALKART_MODE !== 'false'
+      if (isTalkArtMode) {
+        return
+      }
+
       // 新規追加 or 更新があったメッセージだけを抽出
       const newMessagesToSave = state.chatLog.filter(
         (msg, idx) =>

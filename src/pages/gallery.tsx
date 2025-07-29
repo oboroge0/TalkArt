@@ -3,7 +3,6 @@ import { TalkArtGalleryBoard } from '@/components/talkArtGalleryBoard'
 import { TalkArtGalleryArrive } from '@/components/talkArtGalleryArrive'
 import { useRouter } from 'next/router'
 import { Meta } from '@/components/meta'
-import { ArtStorage } from '@/features/talkart/artStorage'
 
 const GalleryPage = () => {
   const router = useRouter()
