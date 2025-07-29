@@ -217,7 +217,7 @@ export const TalkArtForm = () => {
       setGeneratedArtwork(artwork)
       setIsLoading(false)
       setShowParticles(true)
-      
+
       // Small delay to ensure artwork state is set before changing phase
       setTimeout(() => {
         setCurrentPhase('result')
