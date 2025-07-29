@@ -130,6 +130,9 @@ export class RealtimeGalleryService {
   }
 
   isConnected(): boolean {
+    if (typeof EventSource === 'undefined') {
+      return false
+    }
     return this.eventSource?.readyState === EventSource.OPEN
   }
 

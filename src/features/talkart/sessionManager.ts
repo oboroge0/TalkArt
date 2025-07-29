@@ -205,6 +205,11 @@ export class TalkArtSessionManager {
   }
 
   private loadSessionHistory(): void {
+    if (typeof window === 'undefined') {
+      // Running on server, skip localStorage
+      return
+    }
+    
     try {
       const stored = localStorage.getItem(this.STORAGE_KEY)
       if (stored) {
@@ -227,6 +232,11 @@ export class TalkArtSessionManager {
   }
 
   private saveSessionHistory(): void {
+    if (typeof window === 'undefined') {
+      // Running on server, skip localStorage
+      return
+    }
+    
     try {
       localStorage.setItem(
         this.STORAGE_KEY,
