@@ -3,7 +3,7 @@ import { Meta } from '@/components/meta'
 import '@/lib/i18n'
 
 // TalkArt configuration
-const talkartConfig = require('../../../talkart.config.js')
+const talkartConfig = require('../../talkart.config.js')
 
 type ExperiencePhase =
   | 'start'
