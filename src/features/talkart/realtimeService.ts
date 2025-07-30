@@ -108,7 +108,7 @@ export class RealtimeGalleryService {
   }
 
   // Notify server about new artwork
-  async notifyNewArtwork(artwork: StoredArtwork) {
+  async notifyNewArtwork(artwork: any) {
     try {
       const response = await fetch('/api/talkart/stream', {
         method: 'POST',
