@@ -58,15 +58,14 @@ export const TalkArtGalleryBoard: React.FC<TalkArtGalleryBoardProps> = ({
     setStats({
       total: galleryStats.total,
       today: galleryStats.today,
-      featured: 0 // Not implemented yet
+      featured: 0, // Not implemented yet
     })
 
     let filtered = allArtworks
     if (filter === 'today') {
       const today = new Date().toDateString()
       filtered = allArtworks.filter(
-        (artwork) =>
-          new Date(artwork.created_at).toDateString() === today
+        (artwork) => new Date(artwork.created_at).toDateString() === today
       )
     } else if (filter === 'featured') {
       filtered = [] // Not implemented yet
@@ -206,7 +205,8 @@ export const TalkArtGalleryBoard: React.FC<TalkArtGalleryBoardProps> = ({
     }
   }, [realtimeEnabled, loadGallery])
 
-  const handleIncomingArtwork = (artwork: any) => { // Will convert to TalkArtArtwork format
+  const handleIncomingArtwork = (artwork: any) => {
+    // Will convert to TalkArtArtwork format
     // Calculate random start position from edges
     const side = Math.floor(Math.random() * 4)
     let startX = 0,
@@ -252,20 +252,17 @@ export const TalkArtGalleryBoard: React.FC<TalkArtGalleryBoardProps> = ({
     (e: React.MouseEvent, artwork: TalkArtArtwork) => {
       e.stopPropagation()
       // TODO: Implement like functionality with Supabase
-      
+
       // Play a subtle sound effect
       playPaperSound()
     },
     []
   )
 
-  const handleToggleFeatured = useCallback(
-    (artwork: TalkArtArtwork) => {
-      // TODO: Implement featured functionality with Supabase
-      playPinSound()
-    },
-    []
-  )
+  const handleToggleFeatured = useCallback((artwork: TalkArtArtwork) => {
+    // TODO: Implement featured functionality with Supabase
+    playPinSound()
+  }, [])
 
   const handleDelete = useCallback(
     (artwork: TalkArtArtwork) => {
@@ -636,9 +633,9 @@ export const TalkArtGalleryBoard: React.FC<TalkArtGalleryBoardProps> = ({
                 <div>
                   <p className="text-sm text-gray-500 mb-1">作成日時</p>
                   <p className="text-base">
-                    {new Date(
-                      selectedArtwork.created_at
-                    ).toLocaleString('ja-JP')}
+                    {new Date(selectedArtwork.created_at).toLocaleString(
+                      'ja-JP'
+                    )}
                   </p>
                 </div>
 

@@ -19,14 +19,14 @@ export default function GallerySharePage() {
     const fetchArtwork = async () => {
       try {
         const response = await fetch(`/api/talkart/artwork/${id}`)
-        
+
         if (!response.ok) {
           throw new Error('Artwork not found')
         }
 
         const data = await response.json()
         setArtwork(data)
-        
+
         // Generate QR code for sharing
         const shareUrl = `${window.location.origin}/gallery/${id}`
         const qrUrl = await QRCode.toDataURL(shareUrl, {
@@ -63,8 +63,13 @@ export default function GallerySharePage() {
     return (
       <div className="min-h-screen bg-gradient-to-b from-purple-900 to-purple-800 flex items-center justify-center">
         <div className="text-white text-center">
-          <h1 className="text-2xl font-bold mb-4">アートワークが見つかりません</h1>
-          <p className="mb-8">{error || 'お探しのアートワークは存在しないか、削除された可能性があります。'}</p>
+          <h1 className="text-2xl font-bold mb-4">
+            アートワークが見つかりません
+          </h1>
+          <p className="mb-8">
+            {error ||
+              'お探しのアートワークは存在しないか、削除された可能性があります。'}
+          </p>
           <button
             onClick={() => router.push('/gallery')}
             className="px-6 py-3 bg-yellow-400 text-purple-900 rounded-full font-bold hover:scale-105 transition-transform"
@@ -89,7 +94,9 @@ export default function GallerySharePage() {
         <div className="relative z-10 container mx-auto px-4 py-8">
           {/* Header */}
           <div className="flex justify-between items-center mb-8">
-            <h1 className="text-3xl font-bold text-white">夏祭りの思い出アート</h1>
+            <h1 className="text-3xl font-bold text-white">
+              夏祭りの思い出アート
+            </h1>
             <button
               onClick={() => router.push('/gallery')}
               className="px-4 py-2 bg-white/20 text-white rounded-full hover:bg-white/30 transition-colors"
@@ -114,13 +121,13 @@ export default function GallerySharePage() {
               {/* QR Code */}
               {qrCodeUrl && (
                 <div className="bg-white rounded-2xl p-6 shadow-xl text-center">
-                  <h2 className="text-xl font-bold text-purple-900 mb-4">このアートをシェア</h2>
-                  <img
-                    src={qrCodeUrl}
-                    alt="QR Code"
-                    className="mx-auto mb-4"
-                  />
-                  <p className="text-sm text-gray-600">QRコードを読み取って共有</p>
+                  <h2 className="text-xl font-bold text-purple-900 mb-4">
+                    このアートをシェア
+                  </h2>
+                  <img src={qrCodeUrl} alt="QR Code" className="mx-auto mb-4" />
+                  <p className="text-sm text-gray-600">
+                    QRコードを読み取って共有
+                  </p>
                 </div>
               )}
 
@@ -135,7 +142,9 @@ export default function GallerySharePage() {
 
                 <div>
                   <h3 className="text-sm text-gray-500 mb-1">閲覧数</h3>
-                  <p className="text-base text-gray-800">{artwork.view_count} 回</p>
+                  <p className="text-base text-gray-800">
+                    {artwork.view_count} 回
+                  </p>
                 </div>
 
                 {artwork.prompt && (

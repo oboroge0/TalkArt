@@ -1,4 +1,9 @@
-import { supabase, ARTWORK_BUCKET, TalkArtArtwork, getPublicUrl } from '@/lib/supabase'
+import {
+  supabase,
+  ARTWORK_BUCKET,
+  TalkArtArtwork,
+  getPublicUrl,
+} from '@/lib/supabase'
 import { GeneratedArtwork } from './artGenerator'
 
 export class SupabaseArtStorage {
@@ -6,17 +11,20 @@ export class SupabaseArtStorage {
   private base64ToBlob(base64: string, mimeType: string = 'image/png'): Blob {
     const byteCharacters = atob(base64.replace(/^data:image\/\w+;base64,/, ''))
     const byteNumbers = new Array(byteCharacters.length)
-    
+
     for (let i = 0; i < byteCharacters.length; i++) {
       byteNumbers[i] = byteCharacters.charCodeAt(i)
     }
-    
+
     const byteArray = new Uint8Array(byteNumbers)
     return new Blob([byteArray], { type: mimeType })
   }
 
   // Upload image to Supabase Storage
-  async uploadImage(imageUrl: string, sessionId: string): Promise<string | null> {
+  async uploadImage(
+    imageUrl: string,
+    sessionId: string
+  ): Promise<string | null> {
     if (!supabase) {
       console.error('Supabase client not initialized')
       return null
@@ -24,18 +32,18 @@ export class SupabaseArtStorage {
 
     try {
       console.log('Uploading image from URL:', imageUrl)
-      
+
       // If it's a base64 image
       if (imageUrl.startsWith('data:image')) {
         const blob = this.base64ToBlob(imageUrl)
         const fileName = `${sessionId}_${Date.now()}.png`
-        
+
         const { data, error } = await supabase.storage
           .from(ARTWORK_BUCKET)
           .upload(fileName, blob, {
             contentType: 'image/png',
             cacheControl: '3600',
-            upsert: false
+            upsert: false,
           })
 
         if (error) {
@@ -49,13 +57,13 @@ export class SupabaseArtStorage {
         const response = await fetch(imageUrl)
         const blob = await response.blob()
         const fileName = `${sessionId}_${Date.now()}.png`
-        
+
         const { data, error } = await supabase.storage
           .from(ARTWORK_BUCKET)
           .upload(fileName, blob, {
             contentType: 'image/png',
             cacheControl: '3600',
-            upsert: false
+            upsert: false,
           })
 
         if (error) {
@@ -80,11 +88,14 @@ export class SupabaseArtStorage {
 
     try {
       console.log('Starting artwork save process...')
-      
+
       // Upload image first
-      const imagePath = await this.uploadImage(artwork.imageUrl, artwork.metadata.sessionId)
+      const imagePath = await this.uploadImage(
+        artwork.imageUrl,
+        artwork.metadata.sessionId
+      )
       console.log('Image upload result:', imagePath)
-      
+
       if (!imagePath) {
         throw new Error('Failed to upload image')
       }
@@ -96,7 +107,7 @@ export class SupabaseArtStorage {
           session_id: artwork.metadata.sessionId,
           image_url: imagePath,
           prompt: artwork.prompt,
-          responses: artwork.metadata.responses || []
+          responses: artwork.metadata.responses || [],
         })
         .select()
         .single()
@@ -145,7 +156,9 @@ export class SupabaseArtStorage {
   }
 
   // Get artwork by share code
-  async getArtworkByShareCode(shareCode: string): Promise<TalkArtArtwork | null> {
+  async getArtworkByShareCode(
+    shareCode: string
+  ): Promise<TalkArtArtwork | null> {
     if (!supabase) {
       console.error('Supabase client not initialized')
       return null
@@ -198,9 +211,9 @@ export class SupabaseArtStorage {
       }
 
       // Get full image URLs
-      return (data || []).map(artwork => ({
+      return (data || []).map((artwork) => ({
         ...artwork,
-        image_url: artwork.image_url ? getPublicUrl(artwork.image_url) : ''
+        image_url: artwork.image_url ? getPublicUrl(artwork.image_url) : '',
       }))
     } catch (error) {
       console.error('Failed to get recent artworks:', error)
@@ -234,7 +247,7 @@ export class SupabaseArtStorage {
       // Get today's count
       const today = new Date()
       today.setHours(0, 0, 0, 0)
-      
+
       const { count: todayCount } = await supabase
         .from('talkart_artworks')
         .select('*', { count: 'exact', head: true })
@@ -242,7 +255,7 @@ export class SupabaseArtStorage {
 
       return {
         total: total || 0,
-        today: todayCount || 0
+        today: todayCount || 0,
       }
     } catch (error) {
       console.error('Failed to get gallery stats:', error)

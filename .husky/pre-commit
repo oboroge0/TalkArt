@@ -1,0 +1,8 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# Run lint:fix before committing
+npm run lint:fix
+
+# Stage any files that were fixed
+git add -A

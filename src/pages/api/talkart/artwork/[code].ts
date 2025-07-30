@@ -18,7 +18,7 @@ export default async function handler(
   try {
     // Try to find by share code first
     let artwork = await supabaseArtStorage.getArtworkByShareCode(code)
-    
+
     // If not found by share code, try by ID (for backward compatibility)
     if (!artwork) {
       artwork = await supabaseArtStorage.getArtwork(code)

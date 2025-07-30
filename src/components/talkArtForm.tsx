@@ -28,8 +28,10 @@ export const TalkArtForm = () => {
   const [currentPhase, setCurrentPhase] = useState<ExperiencePhase>('start')
   const [generatedArtwork, setGeneratedArtwork] =
     useState<GeneratedArtwork | null>(null)
-  const [savedArtworkInfo, setSavedArtworkInfo] = 
-    useState<{ id: string; shareCode: string } | null>(null)
+  const [savedArtworkInfo, setSavedArtworkInfo] = useState<{
+    id: string
+    shareCode: string
+  } | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [showParticles, setShowParticles] = useState(false)
   const [showSessionStats, setShowSessionStats] = useState(false)
@@ -217,7 +219,7 @@ export const TalkArtForm = () => {
         // Store saved artwork info
         setSavedArtworkInfo({
           id: savedArtwork.id,
-          shareCode: savedArtwork.share_code || savedArtwork.id
+          shareCode: savedArtwork.share_code || savedArtwork.id,
         })
 
         // Notify realtime service
@@ -226,7 +228,7 @@ export const TalkArtForm = () => {
             realtimeGalleryService.notifyNewArtwork({
               ...artwork,
               id: savedArtwork.id,
-              shareCode: savedArtwork.share_code || savedArtwork.id
+              shareCode: savedArtwork.share_code || savedArtwork.id,
             })
           }
         )

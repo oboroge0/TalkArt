@@ -15,7 +15,9 @@ export class SupabaseRealtimeGalleryService {
     // Check if Supabase is available
     if (!supabase) {
       this.enabled = false
-      console.warn('Supabase client not initialized, realtime features disabled')
+      console.warn(
+        'Supabase client not initialized, realtime features disabled'
+      )
     }
   }
 
@@ -31,13 +33,13 @@ export class SupabaseRealtimeGalleryService {
           {
             event: 'INSERT',
             schema: 'public',
-            table: 'talkart_artworks'
+            table: 'talkart_artworks',
           },
           (payload) => {
             console.log('New artwork created:', payload.new)
             this.notifyListeners({
               type: 'new_artwork',
-              artwork: payload.new as TalkArtArtwork
+              artwork: payload.new as TalkArtArtwork,
             })
           }
         )
@@ -46,13 +48,13 @@ export class SupabaseRealtimeGalleryService {
           {
             event: 'UPDATE',
             schema: 'public',
-            table: 'talkart_artworks'
+            table: 'talkart_artworks',
           },
           (payload) => {
             console.log('Artwork updated:', payload.new)
             this.notifyListeners({
               type: 'update_artwork',
-              artwork: payload.new as TalkArtArtwork
+              artwork: payload.new as TalkArtArtwork,
             })
           }
         )
@@ -61,13 +63,13 @@ export class SupabaseRealtimeGalleryService {
           {
             event: 'DELETE',
             schema: 'public',
-            table: 'talkart_artworks'
+            table: 'talkart_artworks',
           },
           (payload) => {
             console.log('Artwork deleted:', payload.old)
             this.notifyListeners({
               type: 'delete_artwork',
-              artwork: payload.old as TalkArtArtwork
+              artwork: payload.old as TalkArtArtwork,
             })
           }
         )
@@ -119,4 +121,5 @@ export class SupabaseRealtimeGalleryService {
 }
 
 // Singleton instance
-export const supabaseRealtimeGalleryService = new SupabaseRealtimeGalleryService()
+export const supabaseRealtimeGalleryService =
+  new SupabaseRealtimeGalleryService()

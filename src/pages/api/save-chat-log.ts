@@ -25,7 +25,7 @@ export default async function handler(
     // Skip in TalkArt mode or serverless environment
     const isTalkArtMode = process.env.NEXT_PUBLIC_TALKART_MODE !== 'false'
     const isVercel = process.env.VERCEL === '1'
-    
+
     if (isTalkArtMode || isVercel) {
       return res.status(200).json({ message: 'Chat log saving skipped' })
     }
