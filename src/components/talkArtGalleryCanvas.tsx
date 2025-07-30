@@ -13,7 +13,7 @@ import {
 } from 'react-konva'
 import useImage from 'use-image'
 import { supabaseArtStorage } from '@/features/talkart/supabaseArtStorage'
-import { TalkArtArtwork } from '@/lib/supabase'
+import { TalkArtArtwork, supabase } from '@/lib/supabase'
 import {
   GalleryLayoutEngine,
   LayoutPosition,
@@ -29,7 +29,6 @@ interface TalkArtGalleryCanvasProps {
   onSelectArtwork?: (artwork: TalkArtArtwork) => void
   shouldRefresh?: boolean
   onRefreshComplete?: () => void
-  onSwitchToHtml?: () => void
 }
 
 // Individual artwork component
@@ -268,7 +267,6 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
   onSelectArtwork,
   shouldRefresh = false,
   onRefreshComplete,
-  onSwitchToHtml,
 }) => {
   const [artworks, setArtworks] = useState<TalkArtArtwork[]>([])
   const [layouts, setLayouts] = useState<Map<string, LayoutPosition>>(new Map())
@@ -283,6 +281,46 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
 
   const containerRef = useRef<HTMLDivElement>(null)
   const layoutEngineRef = useRef<GalleryLayoutEngine | null>(null)
+
+  // Handle artwork deletion
+  const handleDelete = useCallback(async (artwork: TalkArtArtwork) => {
+    if (confirm('このアートワークを削除しますか？')) {
+      try {
+        if (!supabase) {
+          console.error('Supabase client not initialized')
+          alert('削除に失敗しました')
+          return
+        }
+
+        // Delete from Supabase
+        const { error } = await supabase
+          .from('talkart_artworks')
+          .delete()
+          .eq('id', artwork.id)
+
+        if (error) {
+          console.error('Failed to delete artwork:', error)
+          alert('削除に失敗しました')
+          return
+        }
+
+        // Update local state
+        setArtworks((prev) => prev.filter((art) => art.id !== artwork.id))
+        setLayouts((prev) => {
+          const newLayouts = new Map(prev)
+          newLayouts.delete(artwork.id)
+          return newLayouts
+        })
+        setSelectedArtwork(null)
+
+        // Play sound effect
+        talkArtSoundEffects.playTapeRip()
+      } catch (error) {
+        console.error('Failed to delete artwork:', error)
+        alert('削除に失敗しました')
+      }
+    }
+  }, [])
 
   // Load gallery data
   const loadGallery = useCallback(async () => {
@@ -466,35 +504,27 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
             ))}
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* Canvas mode indicator */}
-            <div className="flex items-center gap-2 bg-green-100 px-4 py-2 rounded-full">
-              <span className="text-green-700 font-medium">
-                ✨ Canvas Mode (ドラッグ可能)
+          {/* Realtime Toggle */}
+          <div className="flex items-center gap-2 bg-white/50 px-4 py-2 rounded-full">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={realtimeEnabled}
+                onChange={(e) => {
+                  setRealtimeEnabled(e.target.checked)
+                  supabaseRealtimeGalleryService.setEnabled(e.target.checked)
+                }}
+                className="w-4 h-4 text-yellow-400 rounded focus:ring-yellow-500"
+              />
+              <span className="text-amber-700 font-medium">
+                リアルタイム更新
               </span>
-            </div>
-
-            {/* Switch to HTML mode */}
-            {onSwitchToHtml && (
-              <button
-                onClick={onSwitchToHtml}
-                className="bg-amber-600 text-white px-6 py-2 rounded-full font-medium shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 flex items-center gap-2"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
-                  />
-                </svg>
-                HTML Mode
-              </button>
+            </label>
+            {supabaseRealtimeGalleryService.isConnected() && (
+              <span
+                className="w-2 h-2 bg-green-500 rounded-full animate-pulse"
+                title="接続中"
+              />
             )}
           </div>
         </div>
@@ -602,6 +632,29 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
                     {selectedArtwork.view_count || 0}
                   </p>
                 </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => handleDelete(selectedArtwork)}
+                  className="bg-red-500 text-white py-2 px-4 rounded-full hover:bg-red-600 transition-colors flex items-center gap-2"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
+                  </svg>
+                  削除
+                </button>
               </div>
             </div>
           </div>
