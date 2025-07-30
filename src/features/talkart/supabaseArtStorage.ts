@@ -53,48 +53,66 @@ export class SupabaseArtStorage {
 
         return fileName
       } else {
-        // If it's a URL, fetch it first
-        console.log('Fetching image from URL:', imageUrl)
-        const response = await fetch(imageUrl)
+        // If it's a URL, use proxy to avoid CORS issues
+        console.log('Fetching image from URL via proxy:', imageUrl)
 
-        if (!response.ok) {
-          console.error('Failed to fetch image:', {
-            status: response.status,
-            statusText: response.statusText,
-            url: imageUrl,
-          })
-          return null
-        }
-
-        const blob = await response.blob()
-        console.log('Image fetched:', {
-          size: blob.size,
-          type: blob.type,
-          url: imageUrl,
-        })
-
-        const fileName = `${sessionId}_${Date.now()}.png`
-
-        const { data, error } = await supabase.storage
-          .from(ARTWORK_BUCKET)
-          .upload(fileName, blob, {
-            contentType: blob.type || 'image/png',
-            cacheControl: '3600',
-            upsert: false,
+        try {
+          const proxyResponse = await fetch('/api/talkart/proxy-image', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ imageUrl }),
           })
 
-        if (error) {
-          console.error('Error uploading image:', error)
+          if (!proxyResponse.ok) {
+            const error = await proxyResponse.json()
+            console.error('Proxy fetch failed:', error)
+            return null
+          }
+
+          const { dataUrl, contentType, size } = await proxyResponse.json()
+          console.log('Image fetched via proxy:', {
+            size,
+            contentType,
+            originalUrl: imageUrl,
+          })
+
+          // Convert base64 to blob
+          const base64Data = dataUrl.split(',')[1]
+          const binaryData = atob(base64Data)
+          const bytes = new Uint8Array(binaryData.length)
+          for (let i = 0; i < binaryData.length; i++) {
+            bytes[i] = binaryData.charCodeAt(i)
+          }
+          const blob = new Blob([bytes], { type: contentType })
+
+          const fileName = `${sessionId}_${Date.now()}.png`
+
+          const { data, error } = await supabase.storage
+            .from(ARTWORK_BUCKET)
+            .upload(fileName, blob, {
+              contentType: blob.type || 'image/png',
+              cacheControl: '3600',
+              upsert: false,
+            })
+
+          if (error) {
+            console.error('Error uploading image:', error)
+            return null
+          }
+
+          console.log('Image uploaded successfully:', {
+            fileName,
+            size: blob.size,
+            data,
+          })
+
+          return fileName
+        } catch (error) {
+          console.error('Failed to proxy and upload image:', error)
           return null
         }
-
-        console.log('Image uploaded successfully:', {
-          fileName,
-          size: blob.size,
-          data,
-        })
-
-        return fileName
       }
     } catch (error) {
       console.error('Failed to upload image:', error)
