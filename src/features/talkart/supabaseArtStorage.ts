@@ -54,14 +54,31 @@ export class SupabaseArtStorage {
         return fileName
       } else {
         // If it's a URL, fetch it first
+        console.log('Fetching image from URL:', imageUrl)
         const response = await fetch(imageUrl)
+
+        if (!response.ok) {
+          console.error('Failed to fetch image:', {
+            status: response.status,
+            statusText: response.statusText,
+            url: imageUrl,
+          })
+          return null
+        }
+
         const blob = await response.blob()
+        console.log('Image fetched:', {
+          size: blob.size,
+          type: blob.type,
+          url: imageUrl,
+        })
+
         const fileName = `${sessionId}_${Date.now()}.png`
 
         const { data, error } = await supabase.storage
           .from(ARTWORK_BUCKET)
           .upload(fileName, blob, {
-            contentType: 'image/png',
+            contentType: blob.type || 'image/png',
             cacheControl: '3600',
             upsert: false,
           })
@@ -70,6 +87,12 @@ export class SupabaseArtStorage {
           console.error('Error uploading image:', error)
           return null
         }
+
+        console.log('Image uploaded successfully:', {
+          fileName,
+          size: blob.size,
+          data,
+        })
 
         return fileName
       }

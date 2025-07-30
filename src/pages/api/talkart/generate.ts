@@ -22,12 +22,32 @@ export default async function handler(
       process.env.OPENAI_API_KEY || process.env.NEXT_PUBLIC_ART_API_KEY
     const apiEndpoint = process.env.NEXT_PUBLIC_ART_API_ENDPOINT || 'dalle3'
 
+    console.log('API Configuration:', {
+      hasApiKey: !!apiKey,
+      apiKeyLength: apiKey?.length || 0,
+      apiEndpoint,
+      envKeys: Object.keys(process.env).filter(
+        (key) => key.includes('OPENAI') || key.includes('ART')
+      ),
+    })
+
     if (!apiKey || !apiEndpoint) {
       // Return demo response if no API configured
       console.log('Art generation request:', { prompt, style })
 
+      // Generate a simple base64 placeholder image
+      const placeholderSvg = `
+        <svg width="1024" height="1024" xmlns="http://www.w3.org/2000/svg">
+          <rect width="1024" height="1024" fill="#E5E7EB"/>
+          <text x="512" y="512" font-family="Arial" font-size="48" fill="#9CA3AF" text-anchor="middle" dominant-baseline="middle">
+            画像生成APIキーが設定されていません
+          </text>
+        </svg>
+      `
+      const base64Image = `data:image/svg+xml;base64,${Buffer.from(placeholderSvg).toString('base64')}`
+
       return res.status(200).json({
-        imageUrl: '/images/placeholder-artwork.jpg',
+        imageUrl: base64Image,
         prompt,
         metadata: {
           createdAt: new Date().toISOString(),
@@ -63,12 +83,22 @@ export default async function handler(
 
       if (!response.ok) {
         const error = await response.json()
+        console.error('DALL-E 3 API Error:', {
+          status: response.status,
+          error: error.error,
+          message: error.error?.message || response.statusText,
+        })
         throw new Error(
           `DALL-E 3 error: ${error.error?.message || response.statusText}`
         )
       }
 
       const data = await response.json()
+
+      console.log('DALL-E 3 Success:', {
+        imageUrl: data.data[0].url,
+        revisedPrompt: data.data[0].revised_prompt,
+      })
 
       return res.status(200).json({
         imageUrl: data.data[0].url,
