@@ -40,8 +40,8 @@ export const TalkArtGalleryBoard: React.FC<TalkArtGalleryBoardProps> = ({
     null
   )
   const [hoveredId, setHoveredId] = useState<string | null>(null)
-  const [filter, setFilter] = useState<'all' | 'today' | 'featured'>('all')
-  const [stats, setStats] = useState({ total: 0, today: 0, featured: 0 })
+  const [filter, setFilter] = useState<'all' | 'today'>('all')
+  const [stats, setStats] = useState({ total: 0, today: 0 })
   const [isReorganizing, setIsReorganizing] = useState(false)
   const [realtimeEnabled, setRealtimeEnabled] = useState(true)
   const [incomingArtwork, setIncomingArtwork] = useState<TalkArtArtwork | null>(
@@ -58,7 +58,6 @@ export const TalkArtGalleryBoard: React.FC<TalkArtGalleryBoardProps> = ({
     setStats({
       total: galleryStats.total,
       today: galleryStats.today,
-      featured: 0, // Not implemented yet
     })
 
     let filtered = allArtworks
@@ -67,8 +66,6 @@ export const TalkArtGalleryBoard: React.FC<TalkArtGalleryBoardProps> = ({
       filtered = allArtworks.filter(
         (artwork) => new Date(artwork.created_at).toDateString() === today
       )
-    } else if (filter === 'featured') {
-      filtered = [] // Not implemented yet
     }
 
     setArtworks(filtered)
@@ -259,11 +256,6 @@ export const TalkArtGalleryBoard: React.FC<TalkArtGalleryBoardProps> = ({
     []
   )
 
-  const handleToggleFeatured = useCallback((artwork: TalkArtArtwork) => {
-    // TODO: Implement featured functionality with Supabase
-    playPinSound()
-  }, [])
-
   const handleDelete = useCallback(
     (artwork: TalkArtArtwork) => {
       if (confirm('このアートワークを削除しますか？')) {
@@ -360,7 +352,7 @@ export const TalkArtGalleryBoard: React.FC<TalkArtGalleryBoardProps> = ({
         {/* Filters and Realtime Toggle */}
         <div className="max-w-7xl mx-auto mt-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
-            {(['all', 'today', 'featured'] as const).map((filterType) => (
+            {(['all', 'today'] as const).map((filterType) => (
               <button
                 key={filterType}
                 onClick={() => {
@@ -375,7 +367,6 @@ export const TalkArtGalleryBoard: React.FC<TalkArtGalleryBoardProps> = ({
               >
                 {filterType === 'all' && `すべて (${stats.total})`}
                 {filterType === 'today' && `今日 (${stats.today})`}
-                {filterType === 'featured' && `お気に入り (${stats.featured})`}
               </button>
             ))}
           </div>
@@ -388,7 +379,7 @@ export const TalkArtGalleryBoard: React.FC<TalkArtGalleryBoardProps> = ({
                 checked={realtimeEnabled}
                 onChange={(e) => {
                   setRealtimeEnabled(e.target.checked)
-                  realtimeGalleryService.setEnabled(e.target.checked)
+                  supabaseRealtimeGalleryService.setEnabled(e.target.checked)
                 }}
                 className="w-4 h-4 text-yellow-400 rounded focus:ring-yellow-500"
               />
@@ -396,7 +387,7 @@ export const TalkArtGalleryBoard: React.FC<TalkArtGalleryBoardProps> = ({
                 リアルタイム更新
               </span>
             </label>
-            {realtimeGalleryService.isConnected() && (
+            {supabaseRealtimeGalleryService.isConnected() && (
               <span
                 className="w-2 h-2 bg-green-500 rounded-full animate-pulse"
                 title="接続中"
@@ -556,19 +547,6 @@ export const TalkArtGalleryBoard: React.FC<TalkArtGalleryBoardProps> = ({
                         </span>
                       </button>
                     </div>
-
-                    {/* Featured badge */}
-                    {artwork.featured && (
-                      <div className="absolute top-2 right-2 bg-yellow-400 rounded-full p-1 shadow-md">
-                        <svg
-                          className="w-4 h-4 text-amber-900"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                        </svg>
-                      </div>
-                    )}
                   </div>
                 </div>
               )
@@ -644,7 +622,7 @@ export const TalkArtGalleryBoard: React.FC<TalkArtGalleryBoardProps> = ({
                   <div className="flex items-center gap-1">
                     <HandwrittenHeart filled size={20} />
                     <p className="text-base font-medium">
-                      {selectedArtwork.likes || 0}
+                      {selectedArtwork.view_count || 0}
                     </p>
                   </div>
                 </div>
@@ -652,26 +630,6 @@ export const TalkArtGalleryBoard: React.FC<TalkArtGalleryBoardProps> = ({
 
               {/* Action buttons */}
               <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => handleToggleFeatured(selectedArtwork)}
-                  className={`flex-1 py-2 px-4 rounded-full transition-colors flex items-center justify-center gap-2 ${
-                    selectedArtwork.featured
-                      ? 'bg-yellow-400 text-amber-900 hover:bg-yellow-500'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-                >
-                  <svg
-                    className="w-5 h-5"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </svg>
-                  {selectedArtwork.featured
-                    ? 'お気に入り解除'
-                    : 'お気に入りに追加'}
-                </button>
-
                 <button
                   onClick={() => handleDelete(selectedArtwork)}
                   className="bg-red-500 text-white py-2 px-4 rounded-full hover:bg-red-600 transition-colors"
@@ -687,7 +645,17 @@ export const TalkArtGalleryBoard: React.FC<TalkArtGalleryBoardProps> = ({
       {/* Incoming Artwork Animation */}
       {incomingArtwork && (
         <TalkArtFlyingAnimation
-          artwork={incomingArtwork}
+          artwork={{
+            imageUrl: incomingArtwork.image_url,
+            prompt: incomingArtwork.prompt,
+            metadata: {
+              createdAt: new Date(incomingArtwork.created_at),
+              sessionId: incomingArtwork.session_id,
+              generationTime: 0,
+              style: 'watercolor',
+              themes: [],
+            },
+          }}
           startPosition={flyingStartPosition}
           onComplete={handleIncomingArtworkComplete}
         />

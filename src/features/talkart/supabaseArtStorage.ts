@@ -107,7 +107,7 @@ export class SupabaseArtStorage {
           session_id: artwork.metadata.sessionId,
           image_url: imagePath,
           prompt: artwork.prompt,
-          responses: artwork.metadata.responses || [],
+          responses: [],
         })
         .select()
         .single()

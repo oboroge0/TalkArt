@@ -2,7 +2,20 @@
 . "$(dirname "$0")/_/husky.sh"
 
 # Run lint:fix before committing
+echo "Running lint:fix..."
 npm run lint:fix
 
 # Stage any files that were fixed
 git add -A
+
+# Run build to check for TypeScript errors
+echo "Running build check..."
+npm run build
+
+# If build fails, exit with error
+if [ $? -ne 0 ]; then
+  echo "❌ Build failed! Please fix errors before committing."
+  exit 1
+fi
+
+echo "✅ All checks passed!"
