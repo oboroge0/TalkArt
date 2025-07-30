@@ -16,30 +16,55 @@ export class SupabaseArtStorage {
   }
 
   // Upload image to Supabase Storage
-  async uploadImage(base64Image: string, sessionId: string): Promise<string | null> {
+  async uploadImage(imageUrl: string, sessionId: string): Promise<string | null> {
     if (!supabase) {
       console.error('Supabase client not initialized')
       return null
     }
 
     try {
-      const blob = this.base64ToBlob(base64Image)
-      const fileName = `${sessionId}_${Date.now()}.png`
+      console.log('Uploading image from URL:', imageUrl)
       
-      const { data, error } = await supabase.storage
-        .from(ARTWORK_BUCKET)
-        .upload(fileName, blob, {
-          contentType: 'image/png',
-          cacheControl: '3600',
-          upsert: false
-        })
+      // If it's a base64 image
+      if (imageUrl.startsWith('data:image')) {
+        const blob = this.base64ToBlob(imageUrl)
+        const fileName = `${sessionId}_${Date.now()}.png`
+        
+        const { data, error } = await supabase.storage
+          .from(ARTWORK_BUCKET)
+          .upload(fileName, blob, {
+            contentType: 'image/png',
+            cacheControl: '3600',
+            upsert: false
+          })
 
-      if (error) {
-        console.error('Error uploading image:', error)
-        return null
+        if (error) {
+          console.error('Error uploading image:', error)
+          return null
+        }
+
+        return fileName
+      } else {
+        // If it's a URL, fetch it first
+        const response = await fetch(imageUrl)
+        const blob = await response.blob()
+        const fileName = `${sessionId}_${Date.now()}.png`
+        
+        const { data, error } = await supabase.storage
+          .from(ARTWORK_BUCKET)
+          .upload(fileName, blob, {
+            contentType: 'image/png',
+            cacheControl: '3600',
+            upsert: false
+          })
+
+        if (error) {
+          console.error('Error uploading image:', error)
+          return null
+        }
+
+        return fileName
       }
-
-      return fileName
     } catch (error) {
       console.error('Failed to upload image:', error)
       return null
@@ -54,8 +79,12 @@ export class SupabaseArtStorage {
     }
 
     try {
+      console.log('Starting artwork save process...')
+      
       // Upload image first
       const imagePath = await this.uploadImage(artwork.imageUrl, artwork.metadata.sessionId)
+      console.log('Image upload result:', imagePath)
+      
       if (!imagePath) {
         throw new Error('Failed to upload image')
       }
@@ -67,7 +96,7 @@ export class SupabaseArtStorage {
           session_id: artwork.metadata.sessionId,
           image_url: imagePath,
           prompt: artwork.prompt,
-          responses: artwork.metadata.responses
+          responses: artwork.metadata.responses || []
         })
         .select()
         .single()

@@ -206,7 +206,9 @@ export const TalkArtForm = () => {
       )
 
       // Save to Supabase
+      console.log('Attempting to save artwork to Supabase:', artwork)
       const savedArtwork = await supabaseArtStorage.saveArtwork(artwork)
+      console.log('Supabase save result:', savedArtwork)
 
       if (savedArtwork) {
         // Update session with artwork ID
