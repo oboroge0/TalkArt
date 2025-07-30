@@ -286,20 +286,10 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
   const handleDelete = useCallback(async (artwork: TalkArtArtwork) => {
     if (confirm('このアートワークを削除しますか？')) {
       try {
-        if (!supabase) {
-          console.error('Supabase client not initialized')
-          alert('削除に失敗しました')
-          return
-        }
+        // Use the storage service to delete both database record and image file
+        const success = await supabaseArtStorage.deleteArtwork(artwork.id)
 
-        // Delete from Supabase
-        const { error } = await supabase
-          .from('talkart_artworks')
-          .delete()
-          .eq('id', artwork.id)
-
-        if (error) {
-          console.error('Failed to delete artwork:', error)
+        if (!success) {
           alert('削除に失敗しました')
           return
         }

@@ -273,6 +273,56 @@ export class SupabaseArtStorage {
     }
   }
 
+  // Delete artwork
+  async deleteArtwork(artworkId: string): Promise<boolean> {
+    if (!supabase) {
+      console.error('Supabase client not initialized')
+      return false
+    }
+
+    try {
+      // First, get the artwork to find the image path
+      const { data: artwork, error: fetchError } = await supabase
+        .from('talkart_artworks')
+        .select('image_url')
+        .eq('id', artworkId)
+        .single()
+
+      if (fetchError || !artwork) {
+        console.error('Failed to fetch artwork for deletion:', fetchError)
+        return false
+      }
+
+      // Delete the image from storage if it exists
+      if (artwork.image_url) {
+        const { error: storageError } = await supabase.storage
+          .from(ARTWORK_BUCKET)
+          .remove([artwork.image_url])
+
+        if (storageError) {
+          console.error('Failed to delete image from storage:', storageError)
+          // Continue with database deletion even if storage deletion fails
+        }
+      }
+
+      // Delete from database
+      const { error: dbError } = await supabase
+        .from('talkart_artworks')
+        .delete()
+        .eq('id', artworkId)
+
+      if (dbError) {
+        console.error('Failed to delete artwork from database:', dbError)
+        return false
+      }
+
+      return true
+    } catch (error) {
+      console.error('Failed to delete artwork:', error)
+      return false
+    }
+  }
+
   // Get gallery stats
   async getGalleryStats(): Promise<{ total: number; today: number }> {
     if (!supabase) {
