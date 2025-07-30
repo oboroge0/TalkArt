@@ -106,3 +106,22 @@ When completing a task, **ALWAYS** create an implementation report in markdown f
   - Testing notes
   - File changes
   - Next steps
+
+## Git Hooks Configuration
+
+### Pre-commit Hook
+プロジェクトのコード品質を保つため、コミット前に以下の処理を自動実行する：
+
+1. **Lint修正** (`npm run lint:fix`)
+   - コードフォーマットを自動修正
+   - 修正されたファイルを自動でステージング
+
+2. **ビルドチェック** (`npm run build`)
+   - TypeScriptの型エラーをチェック
+   - ビルドが失敗した場合はコミットを中止
+
+### フック設定
+`.husky/pre-commit` ファイルで設定されており、以下の処理が実行される：
+- ESLintによるコード整形
+- TypeScriptのコンパイルチェック
+- エラーがある場合はコミットをブロック

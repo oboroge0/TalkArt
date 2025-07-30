@@ -136,27 +136,6 @@ export class ArtGenerator {
     const artPrompt = this.createPromptFromResponses(responses)
 
     try {
-      // For demo purposes, return a placeholder
-      // In production, this would call the actual AI image generation API
-      if (!this.config.apiKey || !this.config.apiEndpoint) {
-        console.log('Art generation prompt:', artPrompt.basePrompt)
-
-        // Simulate API delay
-        await new Promise((resolve) => setTimeout(resolve, 2000))
-
-        return {
-          imageUrl: '/images/placeholder-artwork.jpg',
-          prompt: artPrompt.basePrompt,
-          metadata: {
-            createdAt: new Date(),
-            sessionId,
-            generationTime: Date.now() - startTime,
-            style: artPrompt.style,
-            themes: artPrompt.themes,
-          },
-        }
-      }
-
       // Use Next.js API route
       const response = await fetch('/api/talkart/generate', {
         method: 'POST',
