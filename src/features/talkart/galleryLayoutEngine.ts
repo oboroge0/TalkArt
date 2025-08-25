@@ -29,27 +29,58 @@ export class GalleryLayoutEngine {
     private itemHeight: number = 200
   ) {}
 
-  // Generate a random position for a new gallery item
-  public generatePosition(index: number): LayoutPosition {
-    let attempts = 0
-    let position: LayoutPosition | null = null
+  // Generate a grid-based position with random offset within cell
+  public generatePosition(index: number, artworkId?: string): LayoutPosition {
+    // Calculate grid-based position (left-to-right, top-to-bottom)
+    const cellWidth = this.itemWidth * 1.5
+    const cellHeight = this.itemHeight * 1.6 // Slightly taller for portrait format
+    const colsPerRow = Math.floor(this.containerWidth / cellWidth)
 
-    // Try to find a non-overlapping position
-    while (attempts < 50 && !position) {
-      const candidate = this.createRandomPosition(index)
-      if (this.isValidPosition(candidate)) {
-        position = candidate
-        this.recordPosition(candidate)
-      }
-      attempts++
+    const row = Math.floor(index / colsPerRow)
+    const col = index % colsPerRow
+
+    // Base grid position (center of cell)
+    const baseX = col * cellWidth + cellWidth / 2
+    const baseY = row * cellHeight + cellHeight / 2
+
+    // Random offset within cell (±20% of cell size) - changes each reload
+    const offsetRange = cellWidth * 0.2
+    const offsetX = (Math.random() - 0.5) * offsetRange
+    const offsetY = (Math.random() - 0.5) * offsetRange
+
+    // Random rotation - changes each reload
+    const rotation = (Math.random() - 0.5) * 34 // ±17 degrees
+
+    // Scale variation - changes each reload
+    const scale = 0.95 + Math.random() * 0.1 // 0.95 to 1.05
+
+    // Z-index based on creation order (newer items on top)
+    const zIndex = 1000 - index
+
+    // Random decoration type - changes each reload
+    const decorationTypes: Array<'tape' | 'pin' | 'both'> = [
+      'tape',
+      'pin',
+      'both',
+    ]
+    const decorationType =
+      decorationTypes[Math.floor(Math.random() * decorationTypes.length)]
+
+    // Additional tape rotation if using tape - changes each reload
+    const tapeRotation =
+      decorationType !== 'pin' ? -45 + Math.random() * 90 : undefined
+
+    const position = {
+      x: baseX + offsetX,
+      y: baseY + offsetY,
+      rotation,
+      scale,
+      zIndex,
+      decorationType,
+      tapeRotation,
     }
 
-    // If no valid position found, use a fallback grid position
-    if (!position) {
-      position = this.getFallbackPosition(index)
-      this.recordPosition(position)
-    }
-
+    this.recordPosition(position)
     return position
   }
 

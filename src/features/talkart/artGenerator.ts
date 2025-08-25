@@ -112,11 +112,12 @@ export class ArtGenerator {
     })
 
     // Build the final prompt for DALL-E 3
-    const basePrompt = `A beautiful watercolor painting in traditional Japanese art style depicting a summer festival (夏祭り) scene. 
-      The painting includes: ${elements.join(', ')}. 
+    const basePrompt = `A beautiful vertical portrait watercolor painting in traditional Japanese art style depicting a summer festival (夏祭り) scene. 
+      The composition fills the entire vertical frame from top to bottom with ${elements.join(', ')}. 
+      The scene extends vertically showing festival activities from foreground to background, creating depth and filling the tall canvas completely. 
       The atmosphere is ${mood}, with soft brush strokes and delicate color transitions typical of Japanese watercolor art. 
-      Warm summer evening lighting with paper lanterns glowing softly in the background. 
-      Style: Traditional Japanese watercolor painting with subtle gradients and ethereal quality.`
+      Warm summer evening lighting with paper lanterns glowing softly throughout the scene. 
+      Style: Traditional Japanese watercolor painting with subtle gradients and ethereal quality, composed for vertical portrait format.`
 
     return {
       basePrompt,

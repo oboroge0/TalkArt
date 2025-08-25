@@ -41,10 +41,151 @@ interface ArtworkNodeProps {
   onDragEnd: (id: string, x: number, y: number) => void
 }
 
-// Load and render individual artwork image
+// Load and render individual artwork image with logo
 const ArtworkImage: React.FC<{ url: string }> = ({ url }) => {
-  const [image] = useImage(url, 'anonymous')
-  return <Image image={image} width={180} height={160} x={10} y={10} />
+  const [originalImage] = useImage(url, 'anonymous')
+  const [logoImage] = useImage('/images/logo.png', 'anonymous')
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const [compositeImage, setCompositeImage] = useState<HTMLImageElement | null>(
+    null
+  )
+
+  // Create composite image with logo when both images are loaded
+  useEffect(() => {
+    if (!originalImage || !logoImage) return
+
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    // Set canvas size
+    canvas.width = originalImage.width
+    canvas.height = originalImage.height
+
+    // Draw original image
+    ctx.drawImage(originalImage, 0, 0)
+
+    // Calculate logo size (30% of image width)
+    const logoDisplayWidth = canvas.width * 0.3
+    const logoAspectRatio = logoImage.height / logoImage.width
+    const logoDisplayHeight = logoDisplayWidth * logoAspectRatio
+
+    // Position: bottom-right corner (no shadow, perfect fit)
+    const logoX = canvas.width - logoDisplayWidth
+    const logoY = canvas.height - logoDisplayHeight
+
+    // Set logo opacity
+    ctx.save()
+    ctx.globalAlpha = 0.85
+
+    // Draw logo
+    ctx.drawImage(logoImage, logoX, logoY, logoDisplayWidth, logoDisplayHeight)
+
+    ctx.restore()
+
+    // Convert to image
+    const img = document.createElement('img')
+    img.onload = () => setCompositeImage(img)
+    img.src = canvas.toDataURL('image/png', 0.95)
+  }, [originalImage, logoImage])
+
+  // Use composite image if available, otherwise fallback to original
+  const imageToDisplay = compositeImage || originalImage
+
+  return imageToDisplay ? (
+    <Image
+      image={imageToDisplay}
+      width={180}
+      height={200}
+      x={10}
+      y={10}
+      perfectDrawEnabled={false}
+    />
+  ) : null
+}
+
+// Modal version of artwork image with logo
+const ArtworkImageModal: React.FC<{ url: string; alt: string }> = ({
+  url,
+  alt,
+}) => {
+  const [originalImage, setOriginalImage] = useState<HTMLImageElement | null>(
+    null
+  )
+  const [logoImage, setLogoImage] = useState<HTMLImageElement | null>(null)
+  const [compositeImageUrl, setCompositeImageUrl] = useState<string | null>(
+    null
+  )
+
+  useEffect(() => {
+    // Load original image
+    const loadOriginal = new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = document.createElement('img')
+      img.crossOrigin = 'anonymous'
+      img.onload = () => resolve(img)
+      img.onerror = reject
+      img.src = url
+    })
+
+    // Load logo image
+    const loadLogo = new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = document.createElement('img')
+      img.crossOrigin = 'anonymous'
+      img.onload = () => resolve(img)
+      img.onerror = reject
+      img.src = '/images/logo.png'
+    })
+
+    Promise.all([loadOriginal, loadLogo])
+      .then(([original, logo]) => {
+        setOriginalImage(original)
+        setLogoImage(logo)
+
+        // Create composite image
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return
+
+        canvas.width = original.width
+        canvas.height = original.height
+
+        // Draw original image
+        ctx.drawImage(original, 0, 0)
+
+        // Calculate logo size (30% of image width)
+        const logoDisplayWidth = canvas.width * 0.3
+        const logoAspectRatio = logo.height / logo.width
+        const logoDisplayHeight = logoDisplayWidth * logoAspectRatio
+
+        // Position: bottom-right corner (no shadow, perfect fit)
+        const logoX = canvas.width - logoDisplayWidth
+        const logoY = canvas.height - logoDisplayHeight
+
+        // Set logo opacity
+        ctx.save()
+        ctx.globalAlpha = 0.85
+
+        // Draw logo
+        ctx.drawImage(logo, logoX, logoY, logoDisplayWidth, logoDisplayHeight)
+        ctx.restore()
+
+        // Set composite image URL
+        setCompositeImageUrl(canvas.toDataURL('image/png', 0.95))
+      })
+      .catch((error) => {
+        console.error('Failed to load images for modal:', error)
+        // Fallback to original image URL
+        setCompositeImageUrl(url)
+      })
+  }, [url])
+
+  return (
+    <img
+      src={compositeImageUrl || url}
+      alt={alt}
+      className="w-full h-auto rounded-t-2xl"
+    />
+  )
 }
 
 const ArtworkNode: React.FC<ArtworkNodeProps> = ({
@@ -131,7 +272,7 @@ const ArtworkNode: React.FC<ArtworkNodeProps> = ({
       {/* White background with padding */}
       <Rect
         width={200}
-        height={200}
+        height={240}
         fill="white"
         cornerRadius={8}
         stroke={isDragging ? '#fbbf24' : undefined}
@@ -141,7 +282,7 @@ const ArtworkNode: React.FC<ArtworkNodeProps> = ({
       {/* Paper texture effect */}
       <Rect
         width={200}
-        height={200}
+        height={240}
         fill="url(#paper-texture)"
         opacity={0.1}
         cornerRadius={8}
@@ -198,7 +339,7 @@ const ArtworkNode: React.FC<ArtworkNodeProps> = ({
         <Group>
           <Rect
             x={80}
-            y={180}
+            y={220}
             width={40}
             height={20}
             fill={tapeColors[(decorationColorIndex + 1) % 3]}
@@ -225,7 +366,7 @@ const ArtworkNode: React.FC<ArtworkNodeProps> = ({
       )}
 
       {/* Date and view count */}
-      <Group x={10} y={175}>
+      <Group x={10} y={215}>
         {/* Background */}
         <Rect
           width={180}
@@ -282,39 +423,51 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
   const containerRef = useRef<HTMLDivElement>(null)
   const layoutEngineRef = useRef<GalleryLayoutEngine | null>(null)
 
-  // Handle artwork deletion
-  const handleDelete = useCallback(async (artwork: TalkArtArtwork) => {
-    if (confirm('このアートワークを削除しますか？')) {
-      try {
-        // Use the storage service to delete both database record and image file
-        const success = await supabaseArtStorage.deleteArtwork(artwork.id)
+  // Calculate layouts for artworks
+  const calculateLayouts = useCallback(
+    (artworkList: TalkArtArtwork[]) => {
+      if (!layoutEngineRef.current) return
 
-        if (!success) {
-          alert('削除に失敗しました')
-          return
-        }
+      layoutEngineRef.current.reset()
+      const newLayouts = new Map<string, LayoutPosition>()
 
-        // Update local state
-        setArtworks((prev) => prev.filter((art) => art.id !== artwork.id))
-        setLayouts((prev) => {
-          const newLayouts = new Map(prev)
-          newLayouts.delete(artwork.id)
-          return newLayouts
-        })
-        setSelectedArtwork(null)
+      artworkList.forEach((artwork, index) => {
+        const position = layoutEngineRef.current!.generatePosition(
+          index,
+          artwork.id
+        )
+        newLayouts.set(artwork.id, position)
+      })
 
-        // Play sound effect
-        talkArtSoundEffects.playTapeRip()
-      } catch (error) {
-        console.error('Failed to delete artwork:', error)
-        alert('削除に失敗しました')
+      // Calculate required canvas height based on content
+      if (artworkList.length > 0) {
+        const cellWidth = 200 * 1.5
+        const cellHeight = 240 * 1.6 // Updated for portrait format
+        const colsPerRow = Math.floor((stageSize.width - 100) / cellWidth)
+        const rows = Math.ceil(artworkList.length / colsPerRow)
+        const requiredHeight = Math.max(
+          stageSize.height,
+          rows * cellHeight + 100
+        )
+
+        setStageSize((prev) => ({ ...prev, height: requiredHeight }))
       }
-    }
-  }, [])
+
+      setLayouts(newLayouts)
+    },
+    [stageSize.width]
+  )
 
   // Load gallery data
   const loadGallery = useCallback(async () => {
+    console.log('Loading gallery data...')
     const allArtworks = await supabaseArtStorage.getRecentArtworks(50)
+    console.log('Fetched artworks from Supabase:', allArtworks.length, 'items')
+    console.log(
+      'Artwork IDs:',
+      allArtworks.map((a) => a.id)
+    )
+
     const galleryStats = await supabaseArtStorage.getGalleryStats()
     setStats({
       total: galleryStats.total,
@@ -329,24 +482,57 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
       )
     }
 
+    // Sort by creation date (newest first for grid layout)
+    filtered = filtered.sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )
+
+    console.log('Setting artworks state with', filtered.length, 'items')
     setArtworks(filtered)
     calculateLayouts(filtered)
-  }, [filter])
+  }, [filter, calculateLayouts])
 
-  // Calculate layouts for artworks
-  const calculateLayouts = (artworkList: TalkArtArtwork[]) => {
-    if (!layoutEngineRef.current) return
+  // Handle artwork deletion
+  const handleDelete = useCallback(
+    async (artwork: TalkArtArtwork) => {
+      if (confirm('このアートワークを削除しますか？')) {
+        try {
+          // Use the storage service to delete both database record and image file
+          const success = await supabaseArtStorage.deleteArtwork(artwork.id)
 
-    layoutEngineRef.current.reset()
-    const newLayouts = new Map<string, LayoutPosition>()
+          if (!success) {
+            alert('削除に失敗しました')
+            return
+          }
 
-    artworkList.forEach((artwork, index) => {
-      const position = layoutEngineRef.current!.generatePosition(index)
-      newLayouts.set(artwork.id, position)
-    })
+          // Update local state immediately for better UX
+          setArtworks((prev) => prev.filter((art) => art.id !== artwork.id))
+          setLayouts((prev) => {
+            const newLayouts = new Map(prev)
+            newLayouts.delete(artwork.id)
+            return newLayouts
+          })
+          setSelectedArtwork(null)
 
-    setLayouts(newLayouts)
-  }
+          // Play sound effect (ignore error if sound file is missing)
+          try {
+            talkArtSoundEffects.playTapeRip()
+          } catch (soundError) {
+            console.log('Sound effect not available')
+          }
+
+          // Reload gallery data from Supabase to ensure consistency
+          console.log('Reloading gallery after deletion...')
+          await loadGallery()
+        } catch (error) {
+          console.error('Failed to delete artwork:', error)
+          alert('削除に失敗しました')
+        }
+      }
+    },
+    [loadGallery]
+  )
 
   // Handle artwork drag end
   const handleDragEnd = (id: string, x: number, y: number) => {
@@ -372,7 +558,7 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
             rect.width - 100,
             rect.height - 250,
             200,
-            200
+            240 // Updated height for portrait format
           )
         } else {
           layoutEngineRef.current.updateDimensions(
@@ -428,36 +614,52 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
   }, [shouldRefresh, onRefreshComplete, loadGallery])
 
   return (
-    <div className="fixed inset-0 bg-amber-50 z-50 overflow-hidden animate-fadeIn">
-      {/* Background texture */}
+    <div
+      className="fixed inset-0 z-50 overflow-hidden animate-fadeIn"
+      style={{
+        backgroundImage: 'url(/images/CorkBoard.jpg)',
+        backgroundRepeat: 'repeat',
+        backgroundSize: 'auto',
+        border: '12px solid #8B4513',
+        boxShadow: 'inset 0 0 20px rgba(0,0,0,0.3)',
+      }}
+    >
+      {/* Header - Cork Board Frame */}
       <div
-        className="absolute inset-0"
+        className="relative p-6 border-b-8 shadow-2xl"
         style={{
-          backgroundImage: `
-            repeating-linear-gradient(
-              45deg,
-              transparent,
-              transparent 10px,
-              rgba(139, 115, 85, 0.03) 10px,
-              rgba(139, 115, 85, 0.03) 20px
-            )
-          `,
-          backgroundColor: '#D2B48C',
+          background:
+            'linear-gradient(135deg, #8B4513 0%, #A0522D 50%, #8B4513 100%)',
+          borderColor: '#654321',
+          boxShadow:
+            'inset 0 4px 8px rgba(0,0,0,0.3), 0 8px 16px rgba(0,0,0,0.4)',
         }}
-      />
-
-      {/* Header */}
-      <div className="relative bg-amber-800/10 backdrop-blur-sm p-4 border-b-4 border-amber-700/20 shadow-lg">
+      >
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <h2
-            className="text-3xl font-bold text-amber-900"
-            style={{ fontFamily: 'serif' }}
+            className="text-4xl font-bold drop-shadow-lg"
+            style={{
+              color: '#FAEBD7',
+              textShadow: '2px 2px 4px rgba(0,0,0,0.7)',
+              fontFamily: 'serif',
+            }}
           >
             🎋 夏祭りの思い出掲示板 🎋
           </h2>
           <button
             onClick={onClose}
-            className="text-amber-700 hover:text-amber-900 transition-colors bg-white/50 rounded-full p-2"
+            className="transition-colors rounded-full p-2"
+            style={{
+              color: '#FAEBD7',
+              backgroundColor: 'rgba(0,0,0,0.3)',
+              boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.3)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.5)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.3)'
+            }}
           >
             <svg
               className="w-8 h-8"
@@ -482,11 +684,20 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
               <button
                 key={filterType}
                 onClick={() => setFilter(filterType)}
-                className={`px-4 py-2 rounded-full font-medium transition-all transform hover:scale-105 ${
+                className="px-4 py-2 rounded-full font-medium transition-all transform hover:scale-105"
+                style={
                   filter === filterType
-                    ? 'bg-yellow-400 text-amber-900 shadow-md'
-                    : 'bg-white/50 text-amber-700 hover:bg-white/70'
-                }`}
+                    ? {
+                        backgroundColor: '#D2691E',
+                        color: '#FAEBD7',
+                        boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
+                      }
+                    : {
+                        backgroundColor: 'rgba(250, 235, 215, 0.8)',
+                        color: '#8B4513',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                      }
+                }
               >
                 {filterType === 'all' && `すべて (${stats.total})`}
                 {filterType === 'today' && `今日 (${stats.today})`}
@@ -495,7 +706,13 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
           </div>
 
           {/* Realtime Toggle */}
-          <div className="flex items-center gap-2 bg-white/50 px-4 py-2 rounded-full">
+          <div
+            className="flex items-center gap-2 px-4 py-2 rounded-full"
+            style={{
+              backgroundColor: 'rgba(250, 235, 215, 0.8)',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+            }}
+          >
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -506,7 +723,7 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
                 }}
                 className="w-4 h-4 text-yellow-400 rounded focus:ring-yellow-500"
               />
-              <span className="text-amber-700 font-medium">
+              <span className="font-medium" style={{ color: '#8B4513' }}>
                 リアルタイム更新
               </span>
             </label>
@@ -521,7 +738,10 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
       </div>
 
       {/* Canvas container */}
-      <div ref={containerRef} className="relative h-[calc(100vh-120px)]">
+      <div
+        ref={containerRef}
+        className="relative h-[calc(100vh-120px)] overflow-auto"
+      >
         {artworks.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center p-8 bg-white/50 rounded-lg shadow-lg">
@@ -571,10 +791,9 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="relative">
-              <img
-                src={selectedArtwork.image_url}
+              <ArtworkImageModal
+                url={selectedArtwork.image_url}
                 alt={selectedArtwork.prompt}
-                className="w-full h-auto rounded-t-2xl"
               />
               <button
                 onClick={() => setSelectedArtwork(null)}

@@ -281,6 +281,8 @@ export class SupabaseArtStorage {
     }
 
     try {
+      console.log(`Starting deletion of artwork: ${artworkId}`)
+
       // First, get the artwork to find the image path
       const { data: artwork, error: fetchError } = await supabase
         .from('talkart_artworks')
@@ -293,29 +295,68 @@ export class SupabaseArtStorage {
         return false
       }
 
+      console.log('Artwork found with image_url:', artwork.image_url)
+
       // Delete the image from storage if it exists
       if (artwork.image_url) {
-        const { error: storageError } = await supabase.storage
+        console.log(
+          `Attempting to delete image from storage: ${artwork.image_url}`
+        )
+
+        const { data: deleteData, error: storageError } = await supabase.storage
           .from(ARTWORK_BUCKET)
           .remove([artwork.image_url])
 
         if (storageError) {
           console.error('Failed to delete image from storage:', storageError)
           // Continue with database deletion even if storage deletion fails
+        } else {
+          console.log('Storage deletion result:', deleteData)
         }
       }
 
       // Delete from database
-      const { error: dbError } = await supabase
+      console.log(`Deleting artwork from database with id: ${artworkId}`)
+      const { data: dbData, error: dbError } = await supabase
         .from('talkart_artworks')
         .delete()
         .eq('id', artworkId)
+        .select()
 
       if (dbError) {
         console.error('Failed to delete artwork from database:', dbError)
         return false
       }
 
+      console.log('Database deletion result:', dbData)
+
+      // Verify deletion was successful
+      if (!dbData || dbData.length === 0) {
+        console.error(
+          'WARNING: Delete operation returned no data. Artwork may not have been deleted.'
+        )
+        // Double-check if the artwork still exists
+        const { data: checkData, error: checkError } = await supabase
+          .from('talkart_artworks')
+          .select('id')
+          .eq('id', artworkId)
+          .single()
+
+        if (!checkError && checkData) {
+          console.error(
+            'ERROR: Artwork still exists after deletion attempt!',
+            checkData
+          )
+          return false
+        }
+        if (checkError?.code === 'PGRST116') {
+          console.log(
+            'Confirmed: Artwork was successfully deleted (not found in database)'
+          )
+        }
+      }
+
+      console.log('Artwork deletion completed successfully')
       return true
     } catch (error) {
       console.error('Failed to delete artwork:', error)
