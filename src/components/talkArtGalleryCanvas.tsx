@@ -20,9 +20,9 @@ import {
 } from '@/features/talkart/galleryLayoutEngine'
 import { talkArtSoundEffects } from '@/features/talkart/soundEffects'
 import {
-  supabaseRealtimeGalleryService,
-  SupabaseRealtimeEvent,
-} from '@/features/talkart/supabaseRealtimeService'
+  realtimeGalleryService,
+  RealtimeEvent,
+} from '@/features/talkart/realtimeService'
 
 interface TalkArtGalleryCanvasProps {
   onClose: () => void
@@ -580,26 +580,86 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
     return () => window.removeEventListener('resize', updateSize)
   }, [loadGallery, artworks.length])
 
-  // Setup realtime connection
+  // Setup realtime connection (stable connection without infinite reconnects)
   useEffect(() => {
-    if (!realtimeEnabled) return
+    if (!realtimeEnabled) {
+      console.log('🔴 Realtime disabled')
+      return
+    }
 
-    supabaseRealtimeGalleryService.connect()
+    console.log('🟢 Setting up stable realtime connection...')
 
-    const unsubscribe = supabaseRealtimeGalleryService.subscribe(
-      (event: SupabaseRealtimeEvent) => {
+    // Force disconnect any existing connection first
+    realtimeGalleryService.disconnect()
+
+    // Small delay then connect
+    setTimeout(() => {
+      realtimeGalleryService.connect()
+      console.log('🔗 Connection initiated')
+
+      // Test direct SSE connection
+      setTimeout(() => {
+        console.log('🧪 Testing direct SSE connection...')
+        const testEventSource = new EventSource('/api/talkart/stream')
+        testEventSource.onopen = () => {
+          console.log('✅ Direct SSE test connection opened')
+          setTimeout(() => {
+            testEventSource.close()
+            console.log('🔒 Direct SSE test connection closed')
+          }, 2000)
+        }
+        testEventSource.onerror = (error) => {
+          console.error('❌ Direct SSE test connection failed:', error)
+          testEventSource.close()
+        }
+        testEventSource.onmessage = (event) => {
+          console.log('📨 Direct SSE test message:', event.data)
+        }
+      }, 500)
+    }, 100)
+
+    const unsubscribe = realtimeGalleryService.subscribe(
+      (event: RealtimeEvent) => {
+        console.log('🎉 Realtime event received in gallery:', event)
         if (event.type === 'new_artwork') {
+          console.log('📥 New artwork event - reloading gallery')
+          // Use the current loadGallery function
           loadGallery()
-          talkArtSoundEffects.playCorkPop()
+          try {
+            talkArtSoundEffects.playCorkPop()
+          } catch (e) {
+            console.log('🔇 Sound effect failed:', e)
+          }
+        } else if (event.type === 'connected') {
+          console.log('🔗 Connected to realtime service')
+        } else if (event.type === 'ping') {
+          console.log('💓 Keepalive ping')
+        } else {
+          console.log('📋 Other event type:', event.type)
         }
       }
     )
 
+    // Check connection status after connection is established
+    const statusCheck = setTimeout(() => {
+      console.log('🌐 Connection status check:', {
+        connected: realtimeGalleryService.isConnected(),
+        enabled: realtimeEnabled,
+      })
+
+      // If still not connected after 2 seconds, there might be an issue
+      if (!realtimeGalleryService.isConnected()) {
+        console.warn('⚠️ Connection not established after 2 seconds')
+      }
+    }, 2000)
+
     return () => {
+      console.log('🔌 Cleaning up realtime connection')
+      clearTimeout(statusCheck)
       unsubscribe()
-      supabaseRealtimeGalleryService.disconnect()
+      realtimeGalleryService.disconnect()
     }
-  }, [realtimeEnabled, loadGallery])
+  }, [realtimeEnabled]) // Remove loadGallery from dependencies to prevent reconnections
 
   // Handle refresh
   useEffect(() => {
@@ -719,7 +779,11 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
                 checked={realtimeEnabled}
                 onChange={(e) => {
                   setRealtimeEnabled(e.target.checked)
-                  supabaseRealtimeGalleryService.setEnabled(e.target.checked)
+                  if (e.target.checked) {
+                    realtimeGalleryService.connect()
+                  } else {
+                    realtimeGalleryService.disconnect()
+                  }
                 }}
                 className="w-4 h-4 text-yellow-400 rounded focus:ring-yellow-500"
               />
@@ -727,7 +791,7 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
                 リアルタイム更新
               </span>
             </label>
-            {supabaseRealtimeGalleryService.isConnected() && (
+            {realtimeEnabled && (
               <span
                 className="w-2 h-2 bg-green-500 rounded-full animate-pulse"
                 title="接続中"

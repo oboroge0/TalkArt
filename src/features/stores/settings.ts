@@ -343,7 +343,7 @@ const settingsStore = create<SettingsState>()(
         process.env.NEXT_PUBLIC_CHARACTER_PRESET1 ||
         SYSTEM_PROMPT,
       selectedVrmPath:
-        process.env.NEXT_PUBLIC_SELECTED_VRM_PATH || '/vrm/nikechan_v1.vrm',
+        process.env.NEXT_PUBLIC_SELECTED_VRM_PATH || '/vrm/neoko.vrm',
       selectedLive2DPath:
         process.env.NEXT_PUBLIC_SELECTED_LIVE2D_PATH ||
         '/live2d/nike01/nike01.model3.json',

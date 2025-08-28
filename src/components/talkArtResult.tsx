@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react'
 import QRCode from 'qrcode'
 import { GeneratedArtwork } from '@/features/talkart/artGenerator'
 import { TalkArtParticles } from './talkArtParticles'
-import { TalkArtFlyingAnimation } from './talkArtFlyingAnimation'
 import { useRouter } from 'next/router'
 
 interface TalkArtResultProps {
@@ -23,9 +22,16 @@ export const TalkArtResult: React.FC<TalkArtResultProps> = ({
   const [isDownloading, setIsDownloading] = useState(false)
   const [shareUrl, setShareUrl] = useState<string>('')
   const [showParticles, setShowParticles] = useState(true)
-  const [showFlyingAnimation, setShowFlyingAnimation] = useState(false)
-  const [animationStartPos, setAnimationStartPos] = useState({ x: 0, y: 0 })
+  const [isFlyingToGallery, setIsFlyingToGallery] = useState(false)
+  const [flyingStartPos, setFlyingStartPos] = useState({
+    left: 0,
+    top: 0,
+    width: 0,
+  })
   const artworkRef = useRef<HTMLDivElement>(null)
+
+  // Smart gallery window management
+  const galleryWindowRef = useRef<Window | null>(null)
 
   useEffect(() => {
     // Generate share URL
@@ -48,7 +54,39 @@ export const TalkArtResult: React.FC<TalkArtResultProps> = ({
 
     // Hide particles after animation
     const timer = setTimeout(() => setShowParticles(false), 4000)
-    return () => clearTimeout(timer)
+
+    // Add CSS keyframes for flying animation
+    const style = document.createElement('style')
+    style.textContent = `
+      @keyframes flyToGallery {
+        0% {
+          transform: translateX(0px) translateY(0px) scale(1) rotate(0deg);
+          opacity: 1;
+        }
+        100% {
+          transform: translateX(1500px) translateY(-1000px) scale(0.1) rotate(720deg);
+          opacity: 0;
+        }
+      }
+      
+      body {
+        overflow-x: visible !important;
+        overflow-y: visible !important;
+      }
+      
+      html {
+        overflow-x: visible !important;
+        overflow-y: visible !important;
+      }
+    `
+    document.head.appendChild(style)
+
+    return () => {
+      clearTimeout(timer)
+      if (style.parentNode) {
+        style.parentNode.removeChild(style)
+      }
+    }
   }, [artwork, savedInfo])
 
   // Download artwork
@@ -93,9 +131,74 @@ export const TalkArtResult: React.FC<TalkArtResultProps> = ({
     }
   }
 
+  // Start flying animation with the preview image itself
+  const openGalleryWithAnimation = () => {
+    if (artworkRef.current) {
+      const rect = artworkRef.current.getBoundingClientRect()
+      setFlyingStartPos({
+        left: rect.left,
+        top: rect.top,
+        width: rect.width,
+      })
+      setIsFlyingToGallery(true)
+
+      // Complete animation after 4 seconds
+      setTimeout(() => {
+        // Open gallery window
+        openGalleryWindow()
+        // Auto-return to start screen after opening gallery
+        setTimeout(() => {
+          onReset()
+        }, 300)
+      }, 4000)
+    }
+  }
+
+  // Gallery window management (called after animation completes)
+  const openGalleryWindow = () => {
+    const galleryUrl = `${window.location.origin}/gallery`
+
+    // Check if existing gallery window is still open and valid
+    if (galleryWindowRef.current && !galleryWindowRef.current.closed) {
+      try {
+        // Focus and reload existing gallery window
+        galleryWindowRef.current.focus()
+        galleryWindowRef.current.location.reload()
+        console.log('✅ Refreshed existing gallery window')
+        return
+      } catch (error) {
+        // Window might be cross-origin or closed, proceed to open new one
+        console.log('⚠️ Existing gallery window not accessible:', error)
+      }
+    }
+
+    // Open new gallery window
+    try {
+      const galleryWindow = window.open(
+        galleryUrl,
+        'talkart_gallery', // Window name for reuse
+        'width=1200,height=800,scrollbars=yes,resizable=yes,toolbar=no,menubar=no'
+      )
+
+      if (galleryWindow) {
+        galleryWindowRef.current = galleryWindow
+        galleryWindow.focus()
+        console.log('✅ Opened new gallery window')
+      } else {
+        console.error('❌ Failed to open gallery window (popup blocked?)')
+        // Fallback to same-window navigation
+        router.push('/gallery')
+      }
+    } catch (error) {
+      console.error('❌ Failed to open gallery window:', error)
+      // Fallback to same-window navigation
+      router.push('/gallery')
+    }
+  }
+
   return (
     <>
-      <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent z-10">
+      <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent z-10 overflow-visible">
         <TalkArtParticles active={showParticles} />
 
         <div className="max-w-4xl mx-auto">
@@ -113,7 +216,18 @@ export const TalkArtResult: React.FC<TalkArtResultProps> = ({
               >
                 <div
                   ref={artworkRef}
-                  className="bg-white p-2 rounded-lg shadow-2xl animate-glow"
+                  className={`bg-white p-2 rounded-lg shadow-2xl relative ${
+                    !isFlyingToGallery ? 'animate-glow' : ''
+                  }`}
+                  style={
+                    isFlyingToGallery
+                      ? {
+                          animation:
+                            'flyToGallery 4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+                          zIndex: 50,
+                        }
+                      : {}
+                  }
                 >
                   <img
                     src={artwork.imageUrl}
@@ -185,17 +299,7 @@ export const TalkArtResult: React.FC<TalkArtResultProps> = ({
                 </button>
 
                 <button
-                  onClick={() => {
-                    // Get artwork position for animation start
-                    if (artworkRef.current) {
-                      const rect = artworkRef.current.getBoundingClientRect()
-                      setAnimationStartPos({
-                        x: rect.left + rect.width / 2 - 64, // Center minus half of flying image width
-                        y: rect.top + rect.height / 2 - 64,
-                      })
-                      setShowFlyingAnimation(true)
-                    }
-                  }}
+                  onClick={openGalleryWithAnimation}
                   className="w-full px-8 py-3 bg-purple-500 text-white rounded-full font-bold hover:bg-purple-600 transition-transform hover:scale-105"
                 >
                   <span className="flex items-center justify-center gap-2">
@@ -232,18 +336,6 @@ export const TalkArtResult: React.FC<TalkArtResultProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Flying animation */}
-      {showFlyingAnimation && (
-        <TalkArtFlyingAnimation
-          artwork={artwork}
-          startPosition={animationStartPos}
-          onComplete={() => {
-            setShowFlyingAnimation(false)
-            router.push('/gallery?from=result')
-          }}
-        />
-      )}
     </>
   )
 }

@@ -26,15 +26,23 @@ export class RealtimeGalleryService {
   }
 
   connect() {
-    if (!this.enabled || this.isConnecting || this.eventSource) return
+    if (!this.enabled || this.isConnecting || this.eventSource) {
+      console.log('🚫 Connection skipped:', {
+        enabled: this.enabled,
+        isConnecting: this.isConnecting,
+        eventSourceExists: !!this.eventSource,
+      })
+      return
+    }
 
+    console.log('🔄 Starting SSE connection to /api/talkart/stream')
     this.isConnecting = true
 
     try {
       this.eventSource = new EventSource('/api/talkart/stream')
 
       this.eventSource.onopen = () => {
-        console.log('SSE connection opened')
+        console.log('✅ SSE connection opened successfully')
         this.reconnectAttempts = 0
         this.isConnecting = false
       }
@@ -110,6 +118,11 @@ export class RealtimeGalleryService {
   // Notify server about new artwork
   async notifyNewArtwork(artwork: any) {
     try {
+      console.log(
+        '💬 Sending POST to /api/talkart/stream with artwork:',
+        artwork
+      )
+
       const response = await fetch('/api/talkart/stream', {
         method: 'POST',
         headers: {
@@ -118,14 +131,24 @@ export class RealtimeGalleryService {
         body: JSON.stringify(artwork),
       })
 
+      console.log(
+        '📡 POST response status:',
+        response.status,
+        response.statusText
+      )
+
       if (!response.ok) {
-        throw new Error(`Failed to notify: ${response.statusText}`)
+        const errorText = await response.text()
+        throw new Error(
+          `Failed to notify: ${response.statusText} - ${errorText}`
+        )
       }
 
       const result = await response.json()
-      console.log(`Notified ${result.clients} clients about new artwork`)
+      console.log(`✅ Notified ${result.clients} clients about new artwork`)
+      console.log('📊 Full response:', result)
     } catch (error) {
-      console.error('Failed to notify new artwork:', error)
+      console.error('❌ Failed to notify new artwork:', error)
     }
   }
 
