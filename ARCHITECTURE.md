@@ -62,26 +62,52 @@ graph TB
 ## ユーザー体験フロー
 
 ```mermaid
-flowchart LR
-    subgraph "ユーザー体験"
-        Start([開始]) --> Talk[キャラクターと会話]
-        Talk --> Answer[思い出を共有]
-        Answer --> Generate[アートワーク生成]
-        Generate --> View[ギャラリー表示]
-    end
-
-    subgraph "技術スタック"
-        View --> Canvas[Canvas API<br/>ロゴ合成]
-        Canvas --> Konva[Konva.js<br/>インタラクティブ表示]
-        Generate --> DALLE3[DALL-E 3<br/>1024x1792]
-        Talk --> VRMModel[VRMモデル<br/>3Dアバター]
-    end
-
-    subgraph "データフロー"
-        DALLE3 --> Supabase[Supabase Storage]
-        Supabase --> Logo[ロゴ合成処理]
-        Logo --> Display[最終表示]
-    end
+flowchart TB
+    Start([ユーザーがサイトを訪問])
+    
+    Start --> Welcome[VRMキャラクターが挨拶<br/>「夏祭りの思い出を教えて」]
+    
+    Welcome --> Q1{質問1: 誰と行った？}
+    Q1 --> A1[選択肢から回答<br/>・家族 ・友達<br/>・恋人 ・一人]
+    
+    A1 --> Q2{質問2: 何が楽しかった？}
+    Q2 --> A2[選択肢から回答<br/>・屋台グルメ ・花火<br/>・ゲーム ・浴衣]
+    
+    A2 --> Q3{質問3: 特別な瞬間は？}
+    Q3 --> A3[選択肢から回答<br/>・花火の下で ・金魚すくい<br/>・お面選び ・綿あめ]
+    
+    A3 --> Q4{質問4: 時間帯は？}
+    Q4 --> A4[選択肢から回答<br/>・夕暮れ時 ・真夜中<br/>・日が沈む頃 ・宵の口]
+    
+    A4 --> Q5{質問5: 心に残った色は？}
+    Q5 --> A5[選択肢から回答<br/>・提灯の橙 ・夜空の藍<br/>・浴衣の紅 ・花火の金]
+    
+    A5 --> Process[回答を分析<br/>プロンプト生成]
+    
+    Process --> Generate[DALL-E 3 呼び出し<br/>1024x1792 縦長画像生成]
+    
+    Generate --> Save[Supabase Storage保存<br/>メタデータ記録]
+    
+    Save --> Result[生成結果表示<br/>共有オプション提示]
+    
+    Result --> Choice{ユーザーの選択}
+    
+    Choice --> Gallery[ギャラリーを見る]
+    Choice --> Share[SNSでシェア]
+    Choice --> Again[もう一度作る]
+    
+    Gallery --> GalleryView[コルクボード表示<br/>ドラッグ&ドロップ可能]
+    GalleryView --> Detail[作品クリックで詳細]
+    Detail --> Download[ダウンロード/削除]
+    
+    Share --> SNS[Twitter/Instagram<br/>共有リンク生成]
+    
+    Again --> Welcome
+    
+    style Start fill:#e1f5ff
+    style Generate fill:#f3e5f5
+    style Save fill:#e8f5e9
+    style Gallery fill:#fff3e0
 ```
 
 ## データモデル
