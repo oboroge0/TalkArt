@@ -13,6 +13,7 @@ import { TalkArtResult } from './talkArtResult'
 import { talkArtAudioManager } from '@/features/talkart/audioManager'
 import { talkArtSessionManager } from '@/features/talkart/sessionManager'
 import { TalkArtSessionStats } from './talkArtSessionStats'
+import { TalkArtMovieSequence } from './TalkArtMovieSequence'
 import { useRouter } from 'next/router'
 
 // Import TalkArt configuration
@@ -36,6 +37,7 @@ export const TalkArtForm = () => {
   const [showParticles, setShowParticles] = useState(false)
   const [showSessionStats, setShowSessionStats] = useState(false)
   const [galleryStats, setGalleryStats] = useState({ total: 0, today: 0 })
+  const [isGenerationComplete, setIsGenerationComplete] = useState(false)
 
   // Use question flow manager with multilayer support
   const questionFlow = useQuestionFlow({
@@ -443,6 +445,7 @@ export const TalkArtForm = () => {
     isTimeout: boolean = false
   ) => {
     setIsLoading(true)
+    setIsGenerationComplete(false)
     const currentSession = talkArtSessionManager.getCurrentSession()
     const sessionId = currentSession?.id || `session_${Date.now()}`
 
@@ -551,6 +554,7 @@ export const TalkArtForm = () => {
       // Set artwork first
       setGeneratedArtwork(artwork)
       setIsLoading(false)
+      setIsGenerationComplete(true)
       setShowParticles(true)
 
       // Small delay to ensure artwork state is set before changing phase
@@ -590,6 +594,7 @@ export const TalkArtForm = () => {
     } catch (error) {
       console.error('❌ Art generation failed:', error)
       setIsLoading(false)
+      setIsGenerationComplete(true)
 
       // Determine error type and message
       let errorMessage =
@@ -679,6 +684,7 @@ export const TalkArtForm = () => {
       try {
         setIsLoading(false)
         setShowParticles(false)
+        setIsGenerationComplete(false)
       } catch (uiError) {
         console.warn('⚠️ Error resetting UI state (non-critical):', uiError)
       }
@@ -799,28 +805,40 @@ export const TalkArtForm = () => {
 
           case 'generation':
             return (
-              <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent z-10">
-                <div className="max-w-4xl mx-auto text-center text-white">
-                  <div className="mb-4 animate-fadeIn">
-                    <div className="w-16 h-16 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                  </div>
-                  <p className="text-lg animate-pulse">アートを生成中...</p>
-                  <div className="mt-4 flex justify-center gap-2">
-                    <span
-                      className="w-2 h-2 bg-yellow-400 rounded-full animate-bounce"
-                      style={{ animationDelay: '0ms' }}
-                    ></span>
-                    <span
-                      className="w-2 h-2 bg-yellow-400 rounded-full animate-bounce"
-                      style={{ animationDelay: '200ms' }}
-                    ></span>
-                    <span
-                      className="w-2 h-2 bg-yellow-400 rounded-full animate-bounce"
-                      style={{ animationDelay: '400ms' }}
-                    ></span>
+              <>
+                {/* Movie Sequence */}
+                <TalkArtMovieSequence
+                  isGenerating={true}
+                  isGenerationComplete={isGenerationComplete}
+                  onSequenceComplete={() => {
+                    console.log('🎬 Movie sequence completed')
+                  }}
+                />
+
+                {/* Generation UI */}
+                <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent z-10">
+                  <div className="max-w-4xl mx-auto text-center text-white">
+                    <div className="mb-4 animate-fadeIn">
+                      <div className="w-16 h-16 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                    </div>
+                    <p className="text-lg animate-pulse">アートを生成中...</p>
+                    <div className="mt-4 flex justify-center gap-2">
+                      <span
+                        className="w-2 h-2 bg-yellow-400 rounded-full animate-bounce"
+                        style={{ animationDelay: '0ms' }}
+                      ></span>
+                      <span
+                        className="w-2 h-2 bg-yellow-400 rounded-full animate-bounce"
+                        style={{ animationDelay: '200ms' }}
+                      ></span>
+                      <span
+                        className="w-2 h-2 bg-yellow-400 rounded-full animate-bounce"
+                        style={{ animationDelay: '400ms' }}
+                      ></span>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </>
             )
 
           case 'result':

@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TalkArt AIアートシステム アーキテクチャ</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', 'Noto Sans JP', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 1.2em;
+        }
+        
+        .flow-container {
+            display: grid;
+            gap: 30px;
+        }
+        
+        .phase {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            border-left: 5px solid;
+            position: relative;
+            transition: transform 0.3s ease;
+        }
+        
+        .phase:hover {
+            transform: translateX(10px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+        }
+        
+        .phase-1 { border-left-color: #3B82F6; }
+        .phase-2 { border-left-color: #10B981; }
+        .phase-3 { border-left-color: #F59E0B; }
+        .phase-4 { border-left-color: #EF4444; }
+        .phase-5 { border-left-color: #8B5CF6; }
+        
+        .phase-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .phase-number {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1em;
+        }
+        
+        .functions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .function-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .function-card:hover {
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+            border-color: #667eea;
+            transform: scale(1.05);
+        }
+        
+        .function-name {
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 5px;
+            font-size: 1.1em;
+        }
+        
+        .function-desc {
+            color: #6c757d;
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+        
+        .tech-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .tech-badge {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: 500;
+        }
+        
+        .arrow {
+            text-align: center;
+            font-size: 2em;
+            color: #667eea;
+            margin: 20px 0;
+            animation: bounce 2s infinite;
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(10px); }
+        }
+        
+        .feature-highlights {
+            margin-top: 40px;
+            padding: 20px;
+            background: linear-gradient(135deg, #f3e7fc 0%, #e7f3fc 100%);
+            border-radius: 15px;
+        }
+        
+        .feature-title {
+            font-size: 1.3em;
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .feature-item {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+        
+        .feature-icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        .feature-text {
+            color: #495057;
+            font-size: 0.95em;
+        }
+        
+        .mermaid-section {
+            margin-top: 40px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 15px;
+        }
+        
+        .mermaid-title {
+            font-size: 1.3em;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 10px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .copy-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background 0.3s ease;
+        }
+        
+        .copy-button:hover {
+            background: #764ba2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 TalkArt AIアートシステム</h1>
+        <div class="subtitle">AIなんでも展示会 - インタラクティブアーキテクチャ図</div>
+        
+        <div class="flow-container">
+            <!-- Phase 1: User Input -->
+            <div class="phase phase-1">
+                <div class="phase-title">
+                    <span class="phase-number">1</span>
+                    ユーザー入力フェーズ
+                </div>
+                <div class="functions">
+                    <div class="function-card">
+                        <div class="function-name">TalkArtForm</div>
+                        <div class="function-desc">メインフォームコンポーネント。体験の開始とフロー管理</div>
+                        <div class="tech-stack">
+                            <span class="tech-badge">React</span>
+                            <span class="tech-badge">TypeScript</span>
+                        </div>
+                    </div>
+                    <div class="function-card">
+                        <div class="function-name">useQuestionFlow</div>
+                        <div class="function-desc">4軸多層質問システムの管理フック</div>
+                        <div class="tech-stack">
+                            <span class="tech-badge">Custom Hook</span>
+                        </div>
+                    </div>
+                    <div class="function-card">
+                        <div class="function-name">TalkArtQuestionDisplay</div>
+                        <div class="function-desc">質問UI表示とユーザー選択処理</div>
+                        <div class="tech-stack">
+                            <span class="tech-badge">React</span>
+                            <span class="tech-badge">Tailwind</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="arrow">⬇</div>
+            
+            <!-- Phase 2: AI Processing -->
+            <div class="phase phase-2">
+                <div class="phase-title">
+                    <span class="phase-number">2</span>
+                    AI処理フェーズ
+                </div>
+                <div class="functions">
+                    <div class="function-card">
+                        <div class="function-name">ArtGenerator.generateArtwork()</div>
+                        <div class="function-desc">プロンプト生成とDALL-E 3呼び出しを統括</div>
+                        <div class="tech-stack">
+                            <span class="tech-badge">OpenAI API</span>
+                            <span class="tech-badge">DALL-E 3</span>
+                        </div>
+                    </div>
+                    <div class="function-card">
+                        <div class="function-name">generateMultilayerPrompt()</div>
+                        <div class="function-desc">4軸（構図・要素・オブジェクト・感情）からプロンプト生成</div>
+                        <div class="tech-stack">
+                            <span class="tech-badge">Prompt Engineering</span>
+                        </div>
+                    </div>
+                    <div class="function-card">
+                        <div class="function-name">/api/talkart/generate-poetry</div>
+                        <div class="function-desc">GPT-4による3行詩生成API（サーバーサイド）</div>
+                        <div class="tech-stack">
+                            <span class="tech-badge">GPT-4</span>
+                            <span class="tech-badge">Next.js API</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="arrow">⬇</div>
+            
+            <!-- Phase 3: Image Composition -->
+            <div class="phase phase-3">
+                <div class="phase-title">
+                    <span class="phase-number">3</span>
+                    画像合成フェーズ
+                </div>
+                <div class="functions">
+                    <div class="function-card">
+                        <div class="function-name">ArtworkComposer.composeArtwork()</div>
+                        <div class="function-desc">Canvas APIで詩とロゴを画像に合成</div>
+                        <div class="tech-stack">
+                            <span class="tech-badge">HTML5 Canvas</span>
+                            <span class="tech-badge">画像処理</span>
+                        </div>
+                    </div>
+                    <div class="function-card">
+                        <div class="function-name">addPoetryOverlay()</div>
+                        <div class="function-desc">左上に詩を配置（2/3幅、黒背景）</div>
+                        <div class="tech-stack">
+                            <span class="tech-badge">Canvas 2D</span>
+                        </div>
+                    </div>
+                    <div class="function-card">
+                        <div class="function-name">addLogoOverlay()</div>
+                        <div class="function-desc">右下にロゴを配置（透明度85%）</div>
+                        <div class="tech-stack">
+                            <span class="tech-badge">Image合成</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="arrow">⬇</div>
+            
+            <!-- Phase 4: Storage -->
+            <div class="phase phase-4">
+                <div class="phase-title">
+                    <span class="phase-number">4</span>
+                    保存フェーズ
+                </div>
+                <div class="functions">
+                    <div class="function-card">
+                        <div class="function-name">supabaseArtStorage.saveArtwork()</div>
+                        <div class="function-desc">アートワークとメタデータをSupabaseに保存</div>
+                        <div class="tech-stack">
+                            <span class="tech-badge">Supabase</span>
+                            <span class="tech-badge">PostgreSQL</span>
+                        </div>
+                    </div>
+                    <div class="function-card">
+                        <div class="function-name">uploadImage()</div>
+                        <div class="function-desc">画像をSupabase Storageにアップロード</div>
+                        <div class="tech-stack">
+                            <span class="tech-badge">Object Storage</span>
+                        </div>
+                    </div>
+                    <div class="function-card">
+                        <div class="function-name">generateShareCode()</div>
+                        <div class="function-desc">共有用の一意なコード生成</div>
+                        <div class="tech-stack">
+                            <span class="tech-badge">UUID</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="arrow">⬇</div>
+            
+            <!-- Phase 5: Display -->
+            <div class="phase phase-5">
+                <div class="phase-title">
+                    <span class="phase-number">5</span>
+                    表示フェーズ
+                </div>
+                <div class="functions">
+                    <div class="function-card">
+                        <div class="function-name">TalkArtResult</div>
+                        <div class="function-desc">生成結果の表示とダウンロード機能</div>
+                        <div class="tech-stack">
+                            <span class="tech-badge">React</span>
+                            <span class="tech-badge">QRコード</span>
+                        </div>
+                    </div>
+                    <div class="function-card">
+                        <div class="function-name">TalkArtGalleryCanvas</div>
+                        <div class="function-desc">Konvaを使用したインタラクティブギャラリー</div>
+                        <div class="tech-stack">
+                            <span class="tech-badge">React Konva</span>
+                            <span class="tech-badge">Canvas</span>
+                        </div>
+                    </div>
+                    <div class="function-card">
+                        <div class="function-name">ArtworkImageModal</div>
+                        <div class="function-desc">詳細表示モーダル（リアルタイム合成対応）</div>
+                        <div class="tech-stack">
+                            <span class="tech-badge">動的合成</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="feature-highlights">
+            <div class="feature-title">🌟 システムの特徴</div>
+            <div class="features-grid">
+                <div class="feature-item">
+                    <div class="feature-icon">🎭</div>
+                    <div class="feature-text">4軸多層質問システム</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🤖</div>
+                    <div class="feature-text">DALL-E 3 + GPT-4連携</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🎨</div>
+                    <div class="feature-text">リアルタイム画像合成</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">📝</div>
+                    <div class="feature-text">AI生成3行詩</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">💾</div>
+                    <div class="feature-text">Supabaseクラウド保存</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🖼️</div>
+                    <div class="feature-text">インタラクティブギャラリー</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mermaid-section">
+            <div class="mermaid-title">📊 Mermaid図（コピー用）</div>
+            <pre id="mermaid-code">graph TD
+    A[ユーザー] -->|質問に回答| B[TalkArtForm]
+    B --> C[useQuestionFlow<br/>4軸質問管理]
+    C --> D[構図・要素・オブジェクト・感情]
+    
+    D --> E[ArtGenerator.generateArtwork]
+    E --> F[generateMultilayerPrompt<br/>プロンプト生成]
+    E --> G[DALL-E 3 API<br/>画像生成]
+    E --> H[generate-poetry API<br/>GPT-4詩生成]
+    
+    G --> I[ArtworkComposer]
+    H --> I
+    I --> J[Canvas合成<br/>詩+ロゴ]
+    
+    J --> K[supabaseArtStorage]
+    K --> L[画像アップロード]
+    K --> M[メタデータ保存]
+    
+    L --> N[TalkArtResult<br/>結果表示]
+    M --> N
+    N --> O[TalkArtGalleryCanvas<br/>ギャラリー]
+    
+    style A fill:#f9f,stroke:#333,stroke-width:2px
+    style E fill:#bbf,stroke:#333,stroke-width:2px
+    style I fill:#fbf,stroke:#333,stroke-width:2px
+    style O fill:#bfb,stroke:#333,stroke-width:2px</pre>
+            <button class="copy-button" onclick="copyMermaid()">Mermaidコードをコピー</button>
+        </div>
+    </div>
+    
+    <script>
+        function copyMermaid() {
+            const code = document.getElementById('mermaid-code').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                alert('Mermaidコードをコピーしました！');
+            });
+        }
+        
+        // Add interactive tooltips
+        document.querySelectorAll('.function-card').forEach(card => {
+            card.addEventListener('click', function() {
+                const name = this.querySelector('.function-name').textContent;
+                const desc = this.querySelector('.function-desc').textContent;
+                console.log(`📌 ${name}: ${desc}`);
+            });
+        });
+    </script>
+</body>
+</html>

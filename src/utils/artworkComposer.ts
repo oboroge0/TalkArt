@@ -205,7 +205,7 @@ export class ArtworkComposer {
       const overlayHeight = Math.min(canvasHeight * 0.15, 120) // 15% of height or max 120px for 3 lines
       const overlayY = 20 // Top margin
       const overlayX = 20 // Left margin
-      const overlayWidth = Math.min(canvasWidth * 0.6, 400) // 60% width or max 400px
+      const overlayWidth = canvasWidth * 0.67 - 40 // 2/3 of width minus margins
 
       // Background gradient for top-left box
       const gradient = ctx.createLinearGradient(
