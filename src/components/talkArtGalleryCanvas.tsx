@@ -14,6 +14,7 @@ import {
 import useImage from 'use-image'
 import { supabaseArtStorage } from '@/features/talkart/supabaseArtStorage'
 import { TalkArtArtwork, supabase } from '@/lib/supabase'
+import { ArtworkComposer } from '@/utils/artworkComposer'
 import {
   GalleryLayoutEngine,
   LayoutPosition,
@@ -105,10 +106,11 @@ const ArtworkImage: React.FC<{ url: string }> = ({ url }) => {
 }
 
 // Modal version of artwork image with logo
-const ArtworkImageModal: React.FC<{ url: string; alt: string }> = ({
-  url,
-  alt,
-}) => {
+const ArtworkImageModal: React.FC<{
+  url: string
+  alt: string
+  artwork?: any // Pass full artwork object to check for compositeImageUrl
+}> = ({ url, alt, artwork }) => {
   const [originalImage, setOriginalImage] = useState<HTMLImageElement | null>(
     null
   )
@@ -118,66 +120,122 @@ const ArtworkImageModal: React.FC<{ url: string; alt: string }> = ({
   )
 
   useEffect(() => {
-    // Load original image
-    const loadOriginal = new Promise<HTMLImageElement>((resolve, reject) => {
-      const img = document.createElement('img')
-      img.crossOrigin = 'anonymous'
-      img.onload = () => resolve(img)
-      img.onerror = reject
-      img.src = url
+    // Check if artwork has compositeImageUrl (poetry + logo already embedded)
+    // Support both direct compositeImageUrl and nested metadata structure
+    const compositeUrl =
+      artwork?.compositeImageUrl ||
+      artwork?.composite_image_url ||
+      artwork?.metadata?.compositeImageUrl
+
+    console.log('🎨 Gallery artwork data:', {
+      hasCompositeImageUrl: !!artwork?.compositeImageUrl,
+      hasCompositeImageUrlSnake: !!artwork?.composite_image_url,
+      hasPoetry: !!artwork?.poetry,
+      compositeUrlLength: compositeUrl ? compositeUrl.length : 0,
+      isDataUrl: compositeUrl?.startsWith('data:image/') || false,
     })
 
-    // Load logo image
-    const loadLogo = new Promise<HTMLImageElement>((resolve, reject) => {
-      const img = document.createElement('img')
-      img.crossOrigin = 'anonymous'
-      img.onload = () => resolve(img)
-      img.onerror = reject
-      img.src = '/images/logo.png'
-    })
+    if (compositeUrl && compositeUrl.startsWith('data:image/')) {
+      console.log('✅ Using pre-composed artwork with poetry and logo')
+      setCompositeImageUrl(compositeUrl)
+      return
+    }
 
-    Promise.all([loadOriginal, loadLogo])
-      .then(([original, logo]) => {
-        setOriginalImage(original)
-        setLogoImage(logo)
+    // Check if poetry data exists for full composition
+    const poetryData = artwork?.poetry?.poem || artwork?.poetry
 
-        // Create composite image
-        const canvas = document.createElement('canvas')
-        const ctx = canvas.getContext('2d')
-        if (!ctx) return
+    if (poetryData && typeof poetryData === 'string') {
+      console.log(
+        '🎭 Creating full composition with poetry and logo for gallery'
+      )
 
-        canvas.width = original.width
-        canvas.height = original.height
-
-        // Draw original image
-        ctx.drawImage(original, 0, 0)
-
-        // Calculate logo size (30% of image width)
-        const logoDisplayWidth = canvas.width * 0.3
-        const logoAspectRatio = logo.height / logo.width
-        const logoDisplayHeight = logoDisplayWidth * logoAspectRatio
-
-        // Position: bottom-right corner (no shadow, perfect fit)
-        const logoX = canvas.width - logoDisplayWidth
-        const logoY = canvas.height - logoDisplayHeight
-
-        // Set logo opacity
-        ctx.save()
-        ctx.globalAlpha = 0.85
-
-        // Draw logo
-        ctx.drawImage(logo, logoX, logoY, logoDisplayWidth, logoDisplayHeight)
-        ctx.restore()
-
-        // Set composite image URL
-        setCompositeImageUrl(canvas.toDataURL('image/png', 0.95))
+      // Use ArtworkComposer for full poetry + logo composition
+      ArtworkComposer.composeArtwork({
+        imageUrl: url,
+        poetry: poetryData,
+        logoUrl: '/images/logo.png',
+        sessionId: artwork?.session_id || 'gallery',
       })
-      .catch((error) => {
-        console.error('Failed to load images for modal:', error)
-        // Fallback to original image URL
-        setCompositeImageUrl(url)
+        .then((compositeResult) => {
+          if (compositeResult.compositeImageUrl.startsWith('data:image/')) {
+            console.log('✅ Full composition created for gallery display')
+            setCompositeImageUrl(compositeResult.compositeImageUrl)
+          } else {
+            throw new Error('Composition failed, falling back to logo-only')
+          }
+        })
+        .catch((error) => {
+          console.warn('⚠️ Full composition failed, using logo-only:', error)
+          createLogoOnlyComposite()
+        })
+    } else {
+      console.log('🔄 Creating logo-only composite for gallery display')
+      createLogoOnlyComposite()
+    }
+
+    // Logo-only composition function
+    function createLogoOnlyComposite() {
+      // Load original image
+      const loadOriginal = new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = document.createElement('img')
+        img.crossOrigin = 'anonymous'
+        img.onload = () => resolve(img)
+        img.onerror = reject
+        img.src = url
       })
-  }, [url])
+
+      // Load logo image
+      const loadLogo = new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = document.createElement('img')
+        img.crossOrigin = 'anonymous'
+        img.onload = () => resolve(img)
+        img.onerror = reject
+        img.src = '/images/logo.png'
+      })
+
+      Promise.all([loadOriginal, loadLogo])
+        .then(([original, logo]) => {
+          setOriginalImage(original)
+          setLogoImage(logo)
+
+          // Create composite image (logo only)
+          const canvas = document.createElement('canvas')
+          const ctx = canvas.getContext('2d')
+          if (!ctx) return
+
+          canvas.width = original.width
+          canvas.height = original.height
+
+          // Draw original image
+          ctx.drawImage(original, 0, 0)
+
+          // Calculate logo size (30% of image width)
+          const logoDisplayWidth = canvas.width * 0.3
+          const logoAspectRatio = logo.height / logo.width
+          const logoDisplayHeight = logoDisplayWidth * logoAspectRatio
+
+          // Position: bottom-right corner (no shadow, perfect fit)
+          const logoX = canvas.width - logoDisplayWidth
+          const logoY = canvas.height - logoDisplayHeight
+
+          // Set logo opacity
+          ctx.save()
+          ctx.globalAlpha = 0.85
+
+          // Draw logo
+          ctx.drawImage(logo, logoX, logoY, logoDisplayWidth, logoDisplayHeight)
+          ctx.restore()
+
+          // Set composite image URL
+          setCompositeImageUrl(canvas.toDataURL('image/png', 0.95))
+        })
+        .catch((error) => {
+          console.error('Failed to load images for modal:', error)
+          // Fallback to original image URL
+          setCompositeImageUrl(url)
+        })
+    }
+  }, [url, artwork])
 
   return (
     <img
@@ -858,6 +916,7 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
               <ArtworkImageModal
                 url={selectedArtwork.image_url}
                 alt={selectedArtwork.prompt}
+                artwork={selectedArtwork}
               />
               <button
                 onClick={() => setSelectedArtwork(null)}
@@ -884,7 +943,43 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
                 アートワーク詳細
               </h3>
 
-              <div className="space-y-3 text-gray-700">
+              <div className="space-y-4 text-gray-700">
+                {/* Poetry Display (AI Exhibition Feature) */}
+                {selectedArtwork.poetry && (
+                  <div className="p-4 bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg border border-purple-200">
+                    <div className="flex items-center gap-2 mb-3">
+                      <svg
+                        className="w-5 h-5 text-purple-600"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                        />
+                      </svg>
+                      <p className="text-sm font-semibold text-purple-800">
+                        AI詩人が紡いだ思い出
+                      </p>
+                      <span className="text-xs text-white bg-blue-500 px-2 py-1 rounded-full">
+                        GPT-4
+                      </span>
+                    </div>
+                    <div className="text-gray-800 whitespace-pre-line leading-relaxed text-center font-serif">
+                      {selectedArtwork.poetry.poem}
+                    </div>
+                    {selectedArtwork.poetry.metadata && (
+                      <div className="mt-3 text-xs text-purple-600">
+                        生成時間:{' '}
+                        {selectedArtwork.poetry.metadata.generationTime}ms
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div>
                   <p className="text-sm text-gray-500 mb-1">プロンプト</p>
                   <p className="text-base">{selectedArtwork.prompt}</p>
@@ -898,6 +993,24 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
                     )}
                   </p>
                 </div>
+
+                {/* Question system indicator */}
+                {selectedArtwork.metadata?.questionMode && (
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-gray-500">質問システム:</p>
+                    <span
+                      className={`text-xs px-2 py-1 rounded-full ${
+                        selectedArtwork.metadata.questionMode === 'multilayer'
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
+                      {selectedArtwork.metadata.questionMode === 'multilayer'
+                        ? '🎯 多層システム'
+                        : '📝 クラシック'}
+                    </span>
+                  </div>
+                )}
 
                 <div className="flex items-center gap-3">
                   <p className="text-sm text-gray-500">閲覧数:</p>
