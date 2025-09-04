@@ -12,6 +12,7 @@ import {
   Ring,
 } from 'react-konva'
 import useImage from 'use-image'
+import QRCode from 'qrcode'
 import { supabaseArtStorage } from '@/features/talkart/supabaseArtStorage'
 import { TalkArtArtwork, supabase } from '@/lib/supabase'
 import { ArtworkComposer } from '@/utils/artworkComposer'
@@ -40,6 +41,92 @@ interface ArtworkNodeProps {
   onHover: (id: string | null) => void
   onClick: (artwork: TalkArtArtwork) => void
   onDragEnd: (id: string, x: number, y: number) => void
+  onQRClick: (artwork: TalkArtArtwork) => void
+}
+
+// QR Code Hook
+const useArtworkQRCode = (artwork: TalkArtArtwork) => {
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>('')
+
+  useEffect(() => {
+    const generateQRCode = async () => {
+      try {
+        const baseUrl = window.location.origin
+        const shareCode = artwork.id
+        const url = `${baseUrl}/gallery/${shareCode}`
+
+        const qrUrl = await QRCode.toDataURL(url, {
+          width: 128,
+          margin: 1,
+          color: {
+            dark: '#000000',
+            light: '#FFFFFF',
+          },
+        })
+        setQrCodeUrl(qrUrl)
+      } catch (error) {
+        console.error(
+          'Failed to generate QR code for artwork:',
+          artwork.id,
+          error
+        )
+      }
+    }
+
+    generateQRCode()
+  }, [artwork.id])
+
+  return qrCodeUrl
+}
+
+// QR Code Modal Component
+const QRCodeModal: React.FC<{
+  artwork: TalkArtArtwork
+  onClose: () => void
+}> = ({ artwork, onClose }) => {
+  const qrCodeUrl = useArtworkQRCode(artwork)
+
+  if (!qrCodeUrl) {
+    return (
+      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">QRコードを生成中...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-xl font-bold text-purple-900 mb-2">
+          アートワークをダウンロード
+        </h3>
+        <p className="text-sm text-gray-600 mb-4">
+          QRコードを読み取ってスマホでダウンロード
+        </p>
+        <div className="bg-gray-50 p-4 rounded-xl mb-4">
+          <img src={qrCodeUrl} alt="QR Code" className="mx-auto" />
+        </div>
+        <p className="text-xs text-gray-500 mb-4">
+          作品ID: {artwork.id.slice(0, 8)}...
+        </p>
+        <button
+          onClick={onClose}
+          className="px-6 py-2 bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-colors"
+        >
+          閉じる
+        </button>
+      </div>
+    </div>
+  )
 }
 
 // Load and render individual artwork image with logo
@@ -253,6 +340,7 @@ const ArtworkNode: React.FC<ArtworkNodeProps> = ({
   onHover,
   onClick,
   onDragEnd,
+  onQRClick,
 }) => {
   const groupRef = useRef<Konva.Group>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -457,6 +545,40 @@ const ArtworkNode: React.FC<ArtworkNodeProps> = ({
           />
         </Group>
       </Group>
+
+      {/* QR Code Button */}
+      <Group
+        x={170}
+        y={5}
+        onClick={(e) => {
+          e.cancelBubble = true
+          onQRClick(artwork)
+        }}
+        onMouseEnter={() => {
+          document.body.style.cursor = 'pointer'
+        }}
+        onMouseLeave={() => {
+          document.body.style.cursor = 'default'
+        }}
+      >
+        {/* QR Code background */}
+        <Circle
+          radius={12}
+          fill="rgba(255, 255, 255, 0.95)"
+          stroke="#e5e7eb"
+          strokeWidth={1}
+        />
+
+        {/* QR Code icon (simplified) */}
+        <Rect x={-6} y={-6} width={3} height={3} fill="#374151" />
+        <Rect x={-6} y={-1} width={3} height={3} fill="#374151" />
+        <Rect x={-6} y={4} width={3} height={3} fill="#374151" />
+        <Rect x={-1} y={-6} width={3} height={3} fill="#374151" />
+        <Rect x={-1} y={4} width={3} height={3} fill="#374151" />
+        <Rect x={4} y={-6} width={3} height={3} fill="#374151" />
+        <Rect x={4} y={-1} width={3} height={3} fill="#374151" />
+        <Rect x={4} y={4} width={3} height={3} fill="#374151" />
+      </Group>
     </Group>
   )
 }
@@ -477,6 +599,9 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
   const [stats, setStats] = useState({ total: 0, today: 0 })
   const [realtimeEnabled, setRealtimeEnabled] = useState(true)
   const [stageSize, setStageSize] = useState({ width: 800, height: 600 })
+  const [qrModalArtwork, setQrModalArtwork] = useState<TalkArtArtwork | null>(
+    null
+  )
 
   const containerRef = useRef<HTMLDivElement>(null)
   const layoutEngineRef = useRef<GalleryLayoutEngine | null>(null)
@@ -894,6 +1019,7 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
                       if (onSelectArtwork) onSelectArtwork(art)
                     }}
                     onDragEnd={handleDragEnd}
+                    onQRClick={(art) => setQrModalArtwork(art)}
                   />
                 )
               })}
@@ -901,6 +1027,14 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
           </Stage>
         )}
       </div>
+
+      {/* Individual Artwork QR Code Modal */}
+      {qrModalArtwork && (
+        <QRCodeModal
+          artwork={qrModalArtwork}
+          onClose={() => setQrModalArtwork(null)}
+        />
+      )}
 
       {/* Selected artwork modal (keeping HTML version for now) */}
       {selectedArtwork && (
