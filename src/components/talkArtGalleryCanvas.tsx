@@ -956,31 +956,30 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
               boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
             }}
           >
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={realtimeEnabled}
-                  onChange={(e) => {
-                    setRealtimeEnabled(e.target.checked)
-                    if (e.target.checked) {
-                      realtimeGalleryService.connect()
-                    } else {
-                      realtimeGalleryService.disconnect()
-                    }
-                  }}
-                  className="w-4 h-4 text-yellow-400 rounded focus:ring-yellow-500"
-                />
-                <span className="font-medium" style={{ color: '#8B4513' }}>
-                  リアルタイム更新
-                </span>
-              </label>
-              {realtimeEnabled && (
-                <span
-                  className="w-2 h-2 bg-green-500 rounded-full animate-pulse"
-                  title="接続中"
-                />
-              )}
-            </div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={realtimeEnabled}
+                onChange={(e) => {
+                  setRealtimeEnabled(e.target.checked)
+                  if (e.target.checked) {
+                    realtimeGalleryService.connect()
+                  } else {
+                    realtimeGalleryService.disconnect()
+                  }
+                }}
+                className="w-4 h-4 text-yellow-400 rounded focus:ring-yellow-500"
+              />
+              <span className="font-medium" style={{ color: '#8B4513' }}>
+                リアルタイム更新
+              </span>
+            </label>
+            {realtimeEnabled && (
+              <span
+                className="w-2 h-2 bg-green-500 rounded-full animate-pulse"
+                title="接続中"
+              />
+            )}
           </div>
         </div>
       </div>
