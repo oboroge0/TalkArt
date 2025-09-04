@@ -28,7 +28,7 @@ const Home = () => {
   const bgUrl =
     (webcamStatus || captureStatus) && useVideoAsBackground
       ? ''
-      : `url(/backgrounds/bg-test.svg)`
+      : `url(${buildUrl(backgroundImageUrl)})`
   const messageReceiverEnabled = settingsStore((s) => s.messageReceiverEnabled)
   const modelType = settingsStore((s) => s.modelType)
   const { t } = useTranslation()
@@ -93,7 +93,7 @@ const Home = () => {
   }, [])
 
   return (
-    <div className="h-[100svh] bg-red-500" style={{ backgroundImage: bgUrl }}>
+    <div className="h-[100svh] bg-cover bg-center bg-no-repeat" style={{ backgroundImage: bgUrl }}>
       <Meta />
       {!isTalkArtMode && <Introduction />}
       {modelType === 'vrm' ? <VrmViewer /> : <Live2DViewer />}
