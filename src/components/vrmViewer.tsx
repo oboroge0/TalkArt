@@ -7,9 +7,11 @@ export default function VrmViewer() {
   const canvasRef = useCallback((canvas: HTMLCanvasElement) => {
     if (canvas) {
       const { viewer } = homeStore.getState()
-      const { selectedVrmPath } = settingsStore.getState()
+      // Force neeko.vrm for TalkArt
+      const forcedVrmPath = '/vrm/neoko.vrm'
+      console.log('Loading VRM:', forcedVrmPath)
       viewer.setup(canvas)
-      viewer.loadVrm(selectedVrmPath)
+      viewer.loadVrm(forcedVrmPath)
 
       // Drag and DropでVRMを差し替え
       canvas.addEventListener('dragover', function (event) {

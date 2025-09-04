@@ -141,14 +141,34 @@ export class SupabaseArtStorage {
         throw new Error('Failed to upload image')
       }
 
-      // Save to database
+      // Save to database using existing schema (store extra data in responses array)
+      const responses = []
+
+      // Store poetry in responses array if available
+      if (artwork.poetry) {
+        responses.push({
+          type: 'poetry',
+          content: artwork.poetry.poem,
+          metadata: artwork.poetry.metadata,
+        })
+      }
+
+      // Store generation metadata in responses array
+      responses.push({
+        type: 'generation_metadata',
+        questionMode: artwork.metadata.questionMode,
+        axisData: artwork.metadata.axisData,
+        style: artwork.metadata.style,
+        themes: artwork.metadata.themes,
+      })
+
       const { data, error } = await supabase
         .from('talkart_artworks')
         .insert({
           session_id: artwork.metadata.sessionId,
           image_url: imagePath,
           prompt: artwork.prompt,
-          responses: [],
+          responses: responses,
         })
         .select()
         .single()
@@ -251,11 +271,45 @@ export class SupabaseArtStorage {
         return []
       }
 
-      // Get full image URLs
-      return (data || []).map((artwork) => ({
-        ...artwork,
-        image_url: artwork.image_url ? getPublicUrl(artwork.image_url) : '',
-      }))
+      // Get full image URLs and restore poetry/metadata from responses array
+      return (data || []).map((artwork) => {
+        const processed = {
+          ...artwork,
+          image_url: artwork.image_url ? getPublicUrl(artwork.image_url) : '',
+        }
+
+        // Extract poetry and metadata from responses array
+        if (artwork.responses && Array.isArray(artwork.responses)) {
+          const poetryResponse = artwork.responses.find(
+            (r: any) => r.type === 'poetry'
+          )
+          const metadataResponse = artwork.responses.find(
+            (r: any) => r.type === 'generation_metadata'
+          )
+
+          if (poetryResponse) {
+            processed.poetry = {
+              poem: poetryResponse.content,
+              metadata: poetryResponse.metadata,
+            }
+          }
+
+          if (metadataResponse) {
+            processed.metadata = {
+              questionMode: metadataResponse.questionMode,
+              axisData: metadataResponse.axisData,
+              style: metadataResponse.style,
+              themes: metadataResponse.themes,
+              // Add defaults for required fields
+              createdAt: artwork.created_at,
+              sessionId: artwork.session_id,
+              generationTime: 0,
+            }
+          }
+        }
+
+        return processed
+      })
     } catch (error) {
       console.error('Failed to get recent artworks:', error)
       return []
@@ -281,6 +335,8 @@ export class SupabaseArtStorage {
     }
 
     try {
+      console.log(`Starting deletion of artwork: ${artworkId}`)
+
       // First, get the artwork to find the image path
       const { data: artwork, error: fetchError } = await supabase
         .from('talkart_artworks')
@@ -293,29 +349,68 @@ export class SupabaseArtStorage {
         return false
       }
 
+      console.log('Artwork found with image_url:', artwork.image_url)
+
       // Delete the image from storage if it exists
       if (artwork.image_url) {
-        const { error: storageError } = await supabase.storage
+        console.log(
+          `Attempting to delete image from storage: ${artwork.image_url}`
+        )
+
+        const { data: deleteData, error: storageError } = await supabase.storage
           .from(ARTWORK_BUCKET)
           .remove([artwork.image_url])
 
         if (storageError) {
           console.error('Failed to delete image from storage:', storageError)
           // Continue with database deletion even if storage deletion fails
+        } else {
+          console.log('Storage deletion result:', deleteData)
         }
       }
 
       // Delete from database
-      const { error: dbError } = await supabase
+      console.log(`Deleting artwork from database with id: ${artworkId}`)
+      const { data: dbData, error: dbError } = await supabase
         .from('talkart_artworks')
         .delete()
         .eq('id', artworkId)
+        .select()
 
       if (dbError) {
         console.error('Failed to delete artwork from database:', dbError)
         return false
       }
 
+      console.log('Database deletion result:', dbData)
+
+      // Verify deletion was successful
+      if (!dbData || dbData.length === 0) {
+        console.error(
+          'WARNING: Delete operation returned no data. Artwork may not have been deleted.'
+        )
+        // Double-check if the artwork still exists
+        const { data: checkData, error: checkError } = await supabase
+          .from('talkart_artworks')
+          .select('id')
+          .eq('id', artworkId)
+          .single()
+
+        if (!checkError && checkData) {
+          console.error(
+            'ERROR: Artwork still exists after deletion attempt!',
+            checkData
+          )
+          return false
+        }
+        if (checkError?.code === 'PGRST116') {
+          console.log(
+            'Confirmed: Artwork was successfully deleted (not found in database)'
+          )
+        }
+      }
+
+      console.log('Artwork deletion completed successfully')
       return true
     } catch (error) {
       console.error('Failed to delete artwork:', error)

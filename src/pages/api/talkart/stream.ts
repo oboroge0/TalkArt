@@ -21,6 +21,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
 
     // Add client to the set
     clients.add(res)
+    console.log('🟢 New SSE client connected. Total clients:', clients.size)
 
     // Send recent artworks if any
     if (recentArtworks.length > 0) {
@@ -41,12 +42,17 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     req.on('close', () => {
       clearInterval(keepAlive)
       clients.delete(res)
+      console.log('🔴 SSE client disconnected. Total clients:', clients.size)
     })
   } else if (req.method === 'POST') {
     // Broadcast new artwork to all connected clients
     const artwork: StoredArtwork = req.body
 
+    console.log('📨 Received POST request for new artwork:', artwork)
+    console.log('📊 Connected clients:', clients.size)
+
     if (!artwork || !artwork.id) {
+      console.log('❌ Invalid artwork data')
       return res.status(400).json({ error: 'Invalid artwork data' })
     }
 
@@ -62,10 +68,19 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
       artwork,
     })
 
-    clients.forEach((client) => {
-      client.write(`data: ${message}\n\n`)
+    console.log('📡 Broadcasting message to clients:', message)
+
+    clients.forEach((client, index) => {
+      try {
+        client.write(`data: ${message}\n\n`)
+        console.log(`✅ Sent to client ${index}`)
+      } catch (error) {
+        console.log(`❌ Failed to send to client ${index}:`, error)
+        clients.delete(client)
+      }
     })
 
+    console.log('🎯 Broadcast complete')
     res.status(200).json({ success: true, clients: clients.size })
   } else {
     res.status(405).json({ error: 'Method not allowed' })

@@ -5,12 +5,7 @@ import '@/lib/i18n'
 // TalkArt configuration
 const talkartConfig = require('../../talkart.config.js')
 
-type ExperiencePhase =
-  | 'start'
-  | 'questions'
-  | 'generation'
-  | 'result'
-  | 'gallery'
+type ExperiencePhase = 'start' | 'questions' | 'generation' | 'result'
 
 interface ConversationResponse {
   question: string
@@ -74,7 +69,18 @@ const TalkArt = () => {
 
   // View gallery
   const viewGallery = () => {
-    setCurrentPhase('gallery')
+    const newWindow = window.open(
+      '',
+      '_blank',
+      'width=1200,height=800,scrollbars=yes,resizable=yes,toolbar=no,menubar=no'
+    )
+    if (newWindow) {
+      newWindow.location.href = '/gallery'
+      newWindow.focus()
+    } else {
+      // ポップアップがブロックされた場合、同一タブで開く
+      window.location.href = '/gallery'
+    }
   }
 
   return (
@@ -201,37 +207,6 @@ const TalkArt = () => {
             >
               ギャラリーを見る
             </button>
-          </div>
-        </div>
-      )}
-
-      {/* Gallery Screen */}
-      {currentPhase === 'gallery' && (
-        <div className="h-full p-8 animate-fadeIn overflow-auto">
-          <div className="max-w-6xl mx-auto">
-            <div className="flex justify-between items-center mb-8">
-              <h2 className="text-3xl font-bold">みんなの作品</h2>
-              <button
-                onClick={resetExperience}
-                className="px-6 py-2 bg-white/20 rounded-full hover:bg-white/30 transition-colors"
-              >
-                戻る
-              </button>
-            </div>
-
-            <div className="grid grid-cols-5 gap-4">
-              {/* Gallery items placeholder */}
-              {Array.from({ length: 20 }).map((_, index) => (
-                <div
-                  key={index}
-                  className="aspect-square bg-white/10 rounded-lg hover:scale-105 transition-transform"
-                >
-                  <div className="h-full flex items-center justify-center text-white/50">
-                    作品 {index + 1}
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
       )}

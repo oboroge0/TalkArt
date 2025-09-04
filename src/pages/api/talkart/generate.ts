@@ -1,5 +1,6 @@
 // API Route for TalkArt image generation
 import type { NextApiRequest, NextApiResponse } from 'next'
+import { LogoComposer } from '@/utils/logoComposer'
 
 export default async function handler(
   req: NextApiRequest,
@@ -74,7 +75,7 @@ export default async function handler(
             model: 'dall-e-3',
             prompt: prompt,
             n: 1,
-            size: '1024x1024',
+            size: '1024x1792',
             quality: 'standard',
             style: 'vivid',
           }),
@@ -101,7 +102,7 @@ export default async function handler(
       })
 
       return res.status(200).json({
-        imageUrl: data.data[0].url,
+        imageUrl: data.data[0].url, // Logo will be added in the client side
         prompt: data.data[0].revised_prompt || prompt,
         metadata: {
           createdAt: new Date().toISOString(),
