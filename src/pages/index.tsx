@@ -28,7 +28,7 @@ const Home = () => {
   const bgUrl =
     (webcamStatus || captureStatus) && useVideoAsBackground
       ? ''
-      : `url(${buildUrl(backgroundImageUrl)})`
+      : `url(/backgrounds/bg-c.png)`
   const messageReceiverEnabled = settingsStore((s) => s.messageReceiverEnabled)
   const modelType = settingsStore((s) => s.modelType)
   const { t } = useTranslation()
