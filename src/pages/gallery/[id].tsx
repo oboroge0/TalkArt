@@ -1,6 +1,6 @@
 // Gallery share page
 import { useRouter } from 'next/router'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { TalkArtArtwork } from '@/lib/supabase'
 import { Meta } from '@/components/meta'
 import QRCode from 'qrcode'
@@ -12,6 +12,17 @@ export default function GallerySharePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('')
+  const [compositeImageUrl, setCompositeImageUrl] = useState<string>('')
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+
+  // Check if mobile device and redirect to main gallery
+  useEffect(() => {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+    if (isMobile) {
+      // Redirect mobile users to main gallery instead of individual artwork
+      router.push('/talkart')
+    }
+  }, [])
 
   useEffect(() => {
     if (!id || typeof id !== 'string') return
@@ -47,6 +58,67 @@ export default function GallerySharePage() {
 
     fetchArtwork()
   }, [id])
+
+  // Create composite image with logo
+  useEffect(() => {
+    if (!artwork) return
+
+    const createCompositeImage = async () => {
+      const originalImg = new Image()
+      const logoImg = new Image()
+
+      logoImg.crossOrigin = 'anonymous'
+      originalImg.crossOrigin = 'anonymous'
+
+      await new Promise<void>((resolve) => {
+        let loadedCount = 0
+        const checkAllLoaded = () => {
+          loadedCount++
+          if (loadedCount === 2) resolve()
+        }
+
+        logoImg.onload = checkAllLoaded
+        originalImg.onload = checkAllLoaded
+
+        logoImg.src = '/images/logo.png'
+        originalImg.src = artwork.image_url
+      })
+
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return
+
+      // Set canvas size
+      canvas.width = originalImg.width
+      canvas.height = originalImg.height
+
+      // Draw original image
+      ctx.drawImage(originalImg, 0, 0)
+
+      // Calculate logo size (30% of image width)
+      const logoDisplayWidth = canvas.width * 0.3
+      const logoAspectRatio = logoImg.height / logoImg.width
+      const logoDisplayHeight = logoDisplayWidth * logoAspectRatio
+
+      // Position: bottom-right corner
+      const logoX = canvas.width - logoDisplayWidth
+      const logoY = canvas.height - logoDisplayHeight
+
+      // Set logo opacity
+      ctx.save()
+      ctx.globalAlpha = 0.85
+
+      // Draw logo
+      ctx.drawImage(logoImg, logoX, logoY, logoDisplayWidth, logoDisplayHeight)
+
+      ctx.restore()
+
+      // Convert to image URL
+      setCompositeImageUrl(canvas.toDataURL('image/png', 0.95))
+    }
+
+    createCompositeImage()
+  }, [artwork])
 
   if (loading) {
     return (
@@ -110,7 +182,7 @@ export default function GallerySharePage() {
             {/* Artwork */}
             <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
               <img
-                src={artwork.image_url}
+                src={compositeImageUrl || artwork.image_url}
                 alt={artwork.prompt}
                 className="w-full h-auto"
               />

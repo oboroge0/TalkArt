@@ -12,6 +12,7 @@ import {
   Ring,
 } from 'react-konva'
 import useImage from 'use-image'
+import QRCode from 'qrcode'
 import { supabaseArtStorage } from '@/features/talkart/supabaseArtStorage'
 import { TalkArtArtwork, supabase } from '@/lib/supabase'
 import { ArtworkComposer } from '@/utils/artworkComposer'
@@ -477,6 +478,8 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
   const [stats, setStats] = useState({ total: 0, today: 0 })
   const [realtimeEnabled, setRealtimeEnabled] = useState(true)
   const [stageSize, setStageSize] = useState({ width: 800, height: 600 })
+  const [showQRCode, setShowQRCode] = useState(false)
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>('')
 
   const containerRef = useRef<HTMLDivElement>(null)
   const layoutEngineRef = useRef<GalleryLayoutEngine | null>(null)
@@ -731,6 +734,23 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
     }
   }, [shouldRefresh, onRefreshComplete, loadGallery])
 
+  // Generate QR code for gallery URL
+  useEffect(() => {
+    const generateQRCode = async () => {
+      const galleryUrl = `${window.location.origin}/gallery`
+      const qrUrl = await QRCode.toDataURL(galleryUrl, {
+        width: 256,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF',
+        },
+      })
+      setQrCodeUrl(qrUrl)
+    }
+    generateQRCode()
+  }, [])
+
   return (
     <div
       className="fixed inset-0 z-50 overflow-hidden animate-fadeIn"
@@ -823,38 +843,57 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
             ))}
           </div>
 
-          {/* Realtime Toggle */}
-          <div
-            className="flex items-center gap-2 px-4 py-2 rounded-full"
-            style={{
-              backgroundColor: 'rgba(250, 235, 215, 0.8)',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-            }}
-          >
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={realtimeEnabled}
-                onChange={(e) => {
-                  setRealtimeEnabled(e.target.checked)
-                  if (e.target.checked) {
-                    realtimeGalleryService.connect()
-                  } else {
-                    realtimeGalleryService.disconnect()
-                  }
-                }}
-                className="w-4 h-4 text-yellow-400 rounded focus:ring-yellow-500"
-              />
-              <span className="font-medium" style={{ color: '#8B4513' }}>
-                リアルタイム更新
-              </span>
-            </label>
-            {realtimeEnabled && (
-              <span
-                className="w-2 h-2 bg-green-500 rounded-full animate-pulse"
-                title="接続中"
-              />
-            )}
+          {/* QR Code Button */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowQRCode(!showQRCode)}
+              className="px-4 py-2 rounded-full font-medium transition-all transform hover:scale-105"
+              style={{
+                backgroundColor: showQRCode
+                  ? '#D2691E'
+                  : 'rgba(250, 235, 215, 0.8)',
+                color: showQRCode ? '#FAEBD7' : '#8B4513',
+                boxShadow: showQRCode
+                  ? '0 4px 8px rgba(0,0,0,0.3)'
+                  : '0 2px 4px rgba(0,0,0,0.2)',
+              }}
+            >
+              QRコード
+            </button>
+
+            {/* Realtime Toggle */}
+            <div
+              className="flex items-center gap-2 px-4 py-2 rounded-full"
+              style={{
+                backgroundColor: 'rgba(250, 235, 215, 0.8)',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+              }}
+            >
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={realtimeEnabled}
+                  onChange={(e) => {
+                    setRealtimeEnabled(e.target.checked)
+                    if (e.target.checked) {
+                      realtimeGalleryService.connect()
+                    } else {
+                      realtimeGalleryService.disconnect()
+                    }
+                  }}
+                  className="w-4 h-4 text-yellow-400 rounded focus:ring-yellow-500"
+                />
+                <span className="font-medium" style={{ color: '#8B4513' }}>
+                  リアルタイム更新
+                </span>
+              </label>
+              {realtimeEnabled && (
+                <span
+                  className="w-2 h-2 bg-green-500 rounded-full animate-pulse"
+                  title="接続中"
+                />
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -901,6 +940,33 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
           </Stage>
         )}
       </div>
+
+      {/* QR Code Modal */}
+      {showQRCode && qrCodeUrl && (
+        <div
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+          onClick={() => setShowQRCode(false)}
+        >
+          <div
+            className="bg-white rounded-2xl p-6 max-w-sm w-full text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-xl font-bold text-purple-900 mb-4">
+              ギャラリーを共有
+            </h3>
+            <img src={qrCodeUrl} alt="QR Code" className="mx-auto mb-4" />
+            <p className="text-sm text-gray-600 mb-4">
+              QRコードを読み取ってギャラリーにアクセス
+            </p>
+            <button
+              onClick={() => setShowQRCode(false)}
+              className="px-6 py-2 bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-colors"
+            >
+              閉じる
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Selected artwork modal (keeping HTML version for now) */}
       {selectedArtwork && (
