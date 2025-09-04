@@ -737,16 +737,22 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
   // Generate QR code for gallery URL
   useEffect(() => {
     const generateQRCode = async () => {
-      const galleryUrl = `${window.location.origin}/gallery`
-      const qrUrl = await QRCode.toDataURL(galleryUrl, {
-        width: 256,
-        margin: 2,
-        color: {
-          dark: '#000000',
-          light: '#FFFFFF',
-        },
-      })
-      setQrCodeUrl(qrUrl)
+      try {
+        const galleryUrl = `${window.location.origin}/gallery`
+        console.log('Generating QR code for URL:', galleryUrl)
+        const qrUrl = await QRCode.toDataURL(galleryUrl, {
+          width: 256,
+          margin: 2,
+          color: {
+            dark: '#000000',
+            light: '#FFFFFF',
+          },
+        })
+        console.log('QR code generated successfully')
+        setQrCodeUrl(qrUrl)
+      } catch (error) {
+        console.error('Failed to generate QR code:', error)
+      }
     }
     generateQRCode()
   }, [])
@@ -846,7 +852,11 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
           {/* QR Code Button */}
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setShowQRCode(!showQRCode)}
+              onClick={() => {
+                console.log('QR Code button clicked, current state:', showQRCode)
+                console.log('QR Code URL:', qrCodeUrl)
+                setShowQRCode(!showQRCode)
+              }}
               className="px-4 py-2 rounded-full font-medium transition-all transform hover:scale-105"
               style={{
                 backgroundColor: showQRCode
