@@ -166,20 +166,24 @@ export default function GallerySharePage() {
             <h1 className="text-3xl font-bold text-white">
               夏祭りの思い出アート
             </h1>
-            <p className="text-white/70 mt-2">
-              QRコードから作品をダウンロード
-            </p>
+            <p className="text-white/70 mt-2">QRコードから作品をダウンロード</p>
           </div>
 
           {/* Main content */}
           <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
             {/* Artwork */}
             <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-              <img
-                src={compositeImageUrl || artwork.image_url}
-                alt={artwork.prompt}
-                className="w-full h-auto"
-              />
+              {compositeImageUrl ? (
+                <img
+                  src={compositeImageUrl}
+                  alt={artwork.prompt}
+                  className="w-full h-auto"
+                />
+              ) : (
+                <div className="w-full aspect-square bg-gray-200 flex items-center justify-center">
+                  <div className="text-gray-500">画像を準備中...</div>
+                </div>
+              )}
             </div>
 
             {/* Info */}
