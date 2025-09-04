@@ -15,14 +15,7 @@ export default function GallerySharePage() {
   const [compositeImageUrl, setCompositeImageUrl] = useState<string>('')
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
-  // Check if mobile device and redirect to main gallery
-  useEffect(() => {
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-    if (isMobile) {
-      // Redirect mobile users to main gallery instead of individual artwork
-      router.push('/talkart')
-    }
-  }, [])
+  // QR code pages should be accessible from mobile devices for artwork download
 
   useEffect(() => {
     if (!id || typeof id !== 'string') return
