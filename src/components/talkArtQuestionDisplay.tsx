@@ -1,14 +1,19 @@
 import React from 'react'
-import { Question } from '@/features/talkart/questionFlowManager'
+import {
+  Question,
+  MultilayerQuestion,
+} from '@/features/talkart/questionFlowManager'
 
 interface TalkArtQuestionDisplayProps {
-  question: Question
-  onSelectAnswer: (answer: string) => void
+  question: Question | MultilayerQuestion
+  onSelectAnswer: (answer: string, optionValue?: string) => void
   progress: {
     questionNumber: number
     totalQuestions: number
     percentage: number
     timeRemaining: number
+    questionMode?: 'classic' | 'multilayer'
+    fallbackTriggered?: boolean
   }
 }
 
@@ -23,13 +28,55 @@ export const TalkArtQuestionDisplay: React.FC<TalkArtQuestionDisplayProps> = ({
     return `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`
   }
 
+  // Determine if this is a multilayer question
+  const isMultilayerQuestion = (
+    q: Question | MultilayerQuestion
+  ): q is MultilayerQuestion => {
+    return (
+      'axis' in q &&
+      'options' in q &&
+      Array.isArray(q.options) &&
+      q.options.length > 0 &&
+      typeof q.options[0] === 'object'
+    )
+  }
+
+  // Get options array in a consistent format
+  const getQuestionOptions = () => {
+    if (isMultilayerQuestion(question)) {
+      return question.options.map((opt) => ({
+        label: opt.label,
+        value: opt.value,
+      }))
+    } else {
+      return question.options.map((opt) => ({
+        label: opt,
+        value: opt,
+      }))
+    }
+  }
+
+  const options = getQuestionOptions()
+
   return (
     <div className="w-full animate-fadeIn">
       {/* Progress and Timer */}
       <div className="mb-6">
         <div className="flex justify-between text-white text-sm mb-2">
-          <span>
+          <span className="flex items-center gap-2">
             質問 {progress.questionNumber} / {progress.totalQuestions}
+            {/* Show mode indicator */}
+            {progress.questionMode === 'multilayer' &&
+              !progress.fallbackTriggered && (
+                <span className="px-2 py-1 bg-blue-500/30 rounded-full text-xs">
+                  多層
+                </span>
+              )}
+            {progress.fallbackTriggered && (
+              <span className="px-2 py-1 bg-yellow-500/30 rounded-full text-xs">
+                安定モード
+              </span>
+            )}
           </span>
           <span className="flex items-center gap-2">
             <svg
@@ -67,16 +114,29 @@ export const TalkArtQuestionDisplay: React.FC<TalkArtQuestionDisplayProps> = ({
       </div>
 
       {/* Question */}
-      <h3 className="text-white text-2xl font-bold mb-6 text-center leading-relaxed">
-        {question.text}
-      </h3>
+      <div className="mb-6 text-center">
+        {/* Show axis info for multilayer questions */}
+        {isMultilayerQuestion(question) && (
+          <div className="mb-2">
+            <span className="inline-flex items-center px-3 py-1 bg-purple-500/30 rounded-full text-sm text-purple-200">
+              {question.axis === 'composition' && '🎯 構図'}
+              {question.axis === 'elements' && '👥 要素'}
+              {question.axis === 'objects' && '🎪 対象'}
+              {question.axis === 'mood' && '💭 気持ち'}
+            </span>
+          </div>
+        )}
+        <h3 className="text-white text-2xl font-bold leading-relaxed">
+          {question.text}
+        </h3>
+      </div>
 
       {/* Answer options */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {question.options.map((option, index) => (
+        {options.map((option, index) => (
           <button
-            key={index}
-            onClick={() => onSelectAnswer(option)}
+            key={`${option.value}-${index}`}
+            onClick={() => onSelectAnswer(option.label, option.value)}
             className="group relative p-4 bg-white/10 backdrop-blur-sm rounded-xl text-white hover:bg-white/20 transition-all duration-200 transform hover:scale-105 hover:-translate-y-1"
             style={{
               animationDelay: `${index * 100}ms`,
@@ -92,7 +152,7 @@ export const TalkArtQuestionDisplay: React.FC<TalkArtQuestionDisplayProps> = ({
             </div>
 
             {/* Option text */}
-            <span className="relative z-10 block pt-2">{option}</span>
+            <span className="relative z-10 block pt-2">{option.label}</span>
 
             {/* Hover indicator */}
             <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">

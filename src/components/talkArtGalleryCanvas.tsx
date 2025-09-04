@@ -12,8 +12,10 @@ import {
   Ring,
 } from 'react-konva'
 import useImage from 'use-image'
+import QRCode from 'qrcode'
 import { supabaseArtStorage } from '@/features/talkart/supabaseArtStorage'
 import { TalkArtArtwork, supabase } from '@/lib/supabase'
+import { ArtworkComposer } from '@/utils/artworkComposer'
 import {
   GalleryLayoutEngine,
   LayoutPosition,
@@ -39,6 +41,92 @@ interface ArtworkNodeProps {
   onHover: (id: string | null) => void
   onClick: (artwork: TalkArtArtwork) => void
   onDragEnd: (id: string, x: number, y: number) => void
+  onQRClick: (artwork: TalkArtArtwork) => void
+}
+
+// QR Code Hook
+const useArtworkQRCode = (artwork: TalkArtArtwork) => {
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>('')
+
+  useEffect(() => {
+    const generateQRCode = async () => {
+      try {
+        const baseUrl = window.location.origin
+        const shareCode = artwork.id
+        const url = `${baseUrl}/gallery/${shareCode}`
+
+        const qrUrl = await QRCode.toDataURL(url, {
+          width: 128,
+          margin: 1,
+          color: {
+            dark: '#000000',
+            light: '#FFFFFF',
+          },
+        })
+        setQrCodeUrl(qrUrl)
+      } catch (error) {
+        console.error(
+          'Failed to generate QR code for artwork:',
+          artwork.id,
+          error
+        )
+      }
+    }
+
+    generateQRCode()
+  }, [artwork.id])
+
+  return qrCodeUrl
+}
+
+// QR Code Modal Component
+const QRCodeModal: React.FC<{
+  artwork: TalkArtArtwork
+  onClose: () => void
+}> = ({ artwork, onClose }) => {
+  const qrCodeUrl = useArtworkQRCode(artwork)
+
+  if (!qrCodeUrl) {
+    return (
+      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">QRコードを生成中...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-xl font-bold text-purple-900 mb-2">
+          アートワークをダウンロード
+        </h3>
+        <p className="text-sm text-gray-600 mb-4">
+          QRコードを読み取ってスマホでダウンロード
+        </p>
+        <div className="bg-gray-50 p-4 rounded-xl mb-4">
+          <img src={qrCodeUrl} alt="QR Code" className="mx-auto" />
+        </div>
+        <p className="text-xs text-gray-500 mb-4">
+          作品ID: {artwork.id.slice(0, 8)}...
+        </p>
+        <button
+          onClick={onClose}
+          className="px-6 py-2 bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-colors"
+        >
+          閉じる
+        </button>
+      </div>
+    </div>
+  )
 }
 
 // Load and render individual artwork image with logo
@@ -105,10 +193,11 @@ const ArtworkImage: React.FC<{ url: string }> = ({ url }) => {
 }
 
 // Modal version of artwork image with logo
-const ArtworkImageModal: React.FC<{ url: string; alt: string }> = ({
-  url,
-  alt,
-}) => {
+const ArtworkImageModal: React.FC<{
+  url: string
+  alt: string
+  artwork?: any // Pass full artwork object to check for compositeImageUrl
+}> = ({ url, alt, artwork }) => {
   const [originalImage, setOriginalImage] = useState<HTMLImageElement | null>(
     null
   )
@@ -118,66 +207,122 @@ const ArtworkImageModal: React.FC<{ url: string; alt: string }> = ({
   )
 
   useEffect(() => {
-    // Load original image
-    const loadOriginal = new Promise<HTMLImageElement>((resolve, reject) => {
-      const img = document.createElement('img')
-      img.crossOrigin = 'anonymous'
-      img.onload = () => resolve(img)
-      img.onerror = reject
-      img.src = url
+    // Check if artwork has compositeImageUrl (poetry + logo already embedded)
+    // Support both direct compositeImageUrl and nested metadata structure
+    const compositeUrl =
+      artwork?.compositeImageUrl ||
+      artwork?.composite_image_url ||
+      artwork?.metadata?.compositeImageUrl
+
+    console.log('🎨 Gallery artwork data:', {
+      hasCompositeImageUrl: !!artwork?.compositeImageUrl,
+      hasCompositeImageUrlSnake: !!artwork?.composite_image_url,
+      hasPoetry: !!artwork?.poetry,
+      compositeUrlLength: compositeUrl ? compositeUrl.length : 0,
+      isDataUrl: compositeUrl?.startsWith('data:image/') || false,
     })
 
-    // Load logo image
-    const loadLogo = new Promise<HTMLImageElement>((resolve, reject) => {
-      const img = document.createElement('img')
-      img.crossOrigin = 'anonymous'
-      img.onload = () => resolve(img)
-      img.onerror = reject
-      img.src = '/images/logo.png'
-    })
+    if (compositeUrl && compositeUrl.startsWith('data:image/')) {
+      console.log('✅ Using pre-composed artwork with poetry and logo')
+      setCompositeImageUrl(compositeUrl)
+      return
+    }
 
-    Promise.all([loadOriginal, loadLogo])
-      .then(([original, logo]) => {
-        setOriginalImage(original)
-        setLogoImage(logo)
+    // Check if poetry data exists for full composition
+    const poetryData = artwork?.poetry?.poem || artwork?.poetry
 
-        // Create composite image
-        const canvas = document.createElement('canvas')
-        const ctx = canvas.getContext('2d')
-        if (!ctx) return
+    if (poetryData && typeof poetryData === 'string') {
+      console.log(
+        '🎭 Creating full composition with poetry and logo for gallery'
+      )
 
-        canvas.width = original.width
-        canvas.height = original.height
-
-        // Draw original image
-        ctx.drawImage(original, 0, 0)
-
-        // Calculate logo size (30% of image width)
-        const logoDisplayWidth = canvas.width * 0.3
-        const logoAspectRatio = logo.height / logo.width
-        const logoDisplayHeight = logoDisplayWidth * logoAspectRatio
-
-        // Position: bottom-right corner (no shadow, perfect fit)
-        const logoX = canvas.width - logoDisplayWidth
-        const logoY = canvas.height - logoDisplayHeight
-
-        // Set logo opacity
-        ctx.save()
-        ctx.globalAlpha = 0.85
-
-        // Draw logo
-        ctx.drawImage(logo, logoX, logoY, logoDisplayWidth, logoDisplayHeight)
-        ctx.restore()
-
-        // Set composite image URL
-        setCompositeImageUrl(canvas.toDataURL('image/png', 0.95))
+      // Use ArtworkComposer for full poetry + logo composition
+      ArtworkComposer.composeArtwork({
+        imageUrl: url,
+        poetry: poetryData,
+        logoUrl: '/images/logo.png',
+        sessionId: artwork?.session_id || 'gallery',
       })
-      .catch((error) => {
-        console.error('Failed to load images for modal:', error)
-        // Fallback to original image URL
-        setCompositeImageUrl(url)
+        .then((compositeResult) => {
+          if (compositeResult.compositeImageUrl.startsWith('data:image/')) {
+            console.log('✅ Full composition created for gallery display')
+            setCompositeImageUrl(compositeResult.compositeImageUrl)
+          } else {
+            throw new Error('Composition failed, falling back to logo-only')
+          }
+        })
+        .catch((error) => {
+          console.warn('⚠️ Full composition failed, using logo-only:', error)
+          createLogoOnlyComposite()
+        })
+    } else {
+      console.log('🔄 Creating logo-only composite for gallery display')
+      createLogoOnlyComposite()
+    }
+
+    // Logo-only composition function
+    function createLogoOnlyComposite() {
+      // Load original image
+      const loadOriginal = new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = document.createElement('img')
+        img.crossOrigin = 'anonymous'
+        img.onload = () => resolve(img)
+        img.onerror = reject
+        img.src = url
       })
-  }, [url])
+
+      // Load logo image
+      const loadLogo = new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = document.createElement('img')
+        img.crossOrigin = 'anonymous'
+        img.onload = () => resolve(img)
+        img.onerror = reject
+        img.src = '/images/logo.png'
+      })
+
+      Promise.all([loadOriginal, loadLogo])
+        .then(([original, logo]) => {
+          setOriginalImage(original)
+          setLogoImage(logo)
+
+          // Create composite image (logo only)
+          const canvas = document.createElement('canvas')
+          const ctx = canvas.getContext('2d')
+          if (!ctx) return
+
+          canvas.width = original.width
+          canvas.height = original.height
+
+          // Draw original image
+          ctx.drawImage(original, 0, 0)
+
+          // Calculate logo size (30% of image width)
+          const logoDisplayWidth = canvas.width * 0.3
+          const logoAspectRatio = logo.height / logo.width
+          const logoDisplayHeight = logoDisplayWidth * logoAspectRatio
+
+          // Position: bottom-right corner (no shadow, perfect fit)
+          const logoX = canvas.width - logoDisplayWidth
+          const logoY = canvas.height - logoDisplayHeight
+
+          // Set logo opacity
+          ctx.save()
+          ctx.globalAlpha = 0.85
+
+          // Draw logo
+          ctx.drawImage(logo, logoX, logoY, logoDisplayWidth, logoDisplayHeight)
+          ctx.restore()
+
+          // Set composite image URL
+          setCompositeImageUrl(canvas.toDataURL('image/png', 0.95))
+        })
+        .catch((error) => {
+          console.error('Failed to load images for modal:', error)
+          // Fallback to original image URL
+          setCompositeImageUrl(url)
+        })
+    }
+  }, [url, artwork])
 
   return (
     <img
@@ -195,6 +340,7 @@ const ArtworkNode: React.FC<ArtworkNodeProps> = ({
   onHover,
   onClick,
   onDragEnd,
+  onQRClick,
 }) => {
   const groupRef = useRef<Konva.Group>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -399,6 +545,40 @@ const ArtworkNode: React.FC<ArtworkNodeProps> = ({
           />
         </Group>
       </Group>
+
+      {/* QR Code Button */}
+      <Group
+        x={170}
+        y={5}
+        onClick={(e) => {
+          e.cancelBubble = true
+          onQRClick(artwork)
+        }}
+        onMouseEnter={() => {
+          document.body.style.cursor = 'pointer'
+        }}
+        onMouseLeave={() => {
+          document.body.style.cursor = 'default'
+        }}
+      >
+        {/* QR Code background */}
+        <Circle
+          radius={12}
+          fill="rgba(255, 255, 255, 0.95)"
+          stroke="#e5e7eb"
+          strokeWidth={1}
+        />
+
+        {/* QR Code icon (simplified) */}
+        <Rect x={-6} y={-6} width={3} height={3} fill="#374151" />
+        <Rect x={-6} y={-1} width={3} height={3} fill="#374151" />
+        <Rect x={-6} y={4} width={3} height={3} fill="#374151" />
+        <Rect x={-1} y={-6} width={3} height={3} fill="#374151" />
+        <Rect x={-1} y={4} width={3} height={3} fill="#374151" />
+        <Rect x={4} y={-6} width={3} height={3} fill="#374151" />
+        <Rect x={4} y={-1} width={3} height={3} fill="#374151" />
+        <Rect x={4} y={4} width={3} height={3} fill="#374151" />
+      </Group>
     </Group>
   )
 }
@@ -419,6 +599,9 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
   const [stats, setStats] = useState({ total: 0, today: 0 })
   const [realtimeEnabled, setRealtimeEnabled] = useState(true)
   const [stageSize, setStageSize] = useState({ width: 800, height: 600 })
+  const [qrModalArtwork, setQrModalArtwork] = useState<TalkArtArtwork | null>(
+    null
+  )
 
   const containerRef = useRef<HTMLDivElement>(null)
   const layoutEngineRef = useRef<GalleryLayoutEngine | null>(null)
@@ -836,6 +1019,7 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
                       if (onSelectArtwork) onSelectArtwork(art)
                     }}
                     onDragEnd={handleDragEnd}
+                    onQRClick={(art) => setQrModalArtwork(art)}
                   />
                 )
               })}
@@ -843,6 +1027,14 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
           </Stage>
         )}
       </div>
+
+      {/* Individual Artwork QR Code Modal */}
+      {qrModalArtwork && (
+        <QRCodeModal
+          artwork={qrModalArtwork}
+          onClose={() => setQrModalArtwork(null)}
+        />
+      )}
 
       {/* Selected artwork modal (keeping HTML version for now) */}
       {selectedArtwork && (
@@ -858,6 +1050,7 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
               <ArtworkImageModal
                 url={selectedArtwork.image_url}
                 alt={selectedArtwork.prompt}
+                artwork={selectedArtwork}
               />
               <button
                 onClick={() => setSelectedArtwork(null)}
@@ -884,7 +1077,43 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
                 アートワーク詳細
               </h3>
 
-              <div className="space-y-3 text-gray-700">
+              <div className="space-y-4 text-gray-700">
+                {/* Poetry Display (AI Exhibition Feature) */}
+                {selectedArtwork.poetry && (
+                  <div className="p-4 bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg border border-purple-200">
+                    <div className="flex items-center gap-2 mb-3">
+                      <svg
+                        className="w-5 h-5 text-purple-600"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                        />
+                      </svg>
+                      <p className="text-sm font-semibold text-purple-800">
+                        AI詩人が紡いだ思い出
+                      </p>
+                      <span className="text-xs text-white bg-blue-500 px-2 py-1 rounded-full">
+                        GPT-4
+                      </span>
+                    </div>
+                    <div className="text-gray-800 whitespace-pre-line leading-relaxed text-center font-serif">
+                      {selectedArtwork.poetry.poem}
+                    </div>
+                    {selectedArtwork.poetry.metadata && (
+                      <div className="mt-3 text-xs text-purple-600">
+                        生成時間:{' '}
+                        {selectedArtwork.poetry.metadata.generationTime}ms
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div>
                   <p className="text-sm text-gray-500 mb-1">プロンプト</p>
                   <p className="text-base">{selectedArtwork.prompt}</p>
@@ -898,6 +1127,24 @@ export const TalkArtGalleryCanvas: React.FC<TalkArtGalleryCanvasProps> = ({
                     )}
                   </p>
                 </div>
+
+                {/* Question system indicator */}
+                {selectedArtwork.metadata?.questionMode && (
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-gray-500">質問システム:</p>
+                    <span
+                      className={`text-xs px-2 py-1 rounded-full ${
+                        selectedArtwork.metadata.questionMode === 'multilayer'
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
+                      {selectedArtwork.metadata.questionMode === 'multilayer'
+                        ? '🎯 多層システム'
+                        : '📝 クラシック'}
+                    </span>
+                  </div>
+                )}
 
                 <div className="flex items-center gap-3">
                   <p className="text-sm text-gray-500">閲覧数:</p>

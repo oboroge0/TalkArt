@@ -14,6 +14,36 @@ export interface TalkArtArtwork {
   updated_at: string
   share_code?: string
   view_count: number
+  // New fields for unified Canvas processing and AI exhibition
+  poetry?: {
+    poem: string
+    metadata: {
+      createdAt: string
+      sessionId: string
+      generationTime: number
+      axis: {
+        composition: string
+        elements: string
+        objects: string
+        mood: string
+      }
+      style: 'haiku' | 'tanka' | 'free_verse'
+    }
+  }
+  metadata?: {
+    createdAt: string
+    sessionId: string
+    generationTime: number
+    style: string
+    themes: string[]
+    questionMode?: 'classic' | 'multilayer'
+    axisData?: {
+      composition: string
+      elements: string
+      objects: string
+      mood: string
+    }
+  }
 }
 
 // Initialize Supabase client

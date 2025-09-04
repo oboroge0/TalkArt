@@ -34,6 +34,20 @@ export const TalkArtResult: React.FC<TalkArtResultProps> = ({
   const galleryWindowRef = useRef<Window | null>(null)
 
   useEffect(() => {
+    // Debug: Log artwork data structure
+    console.log('🎨 TalkArtResult artwork data:', {
+      hasCompositeImageUrl: !!artwork.compositeImageUrl,
+      compositeImageUrlType: typeof artwork.compositeImageUrl,
+      compositeImageUrlLength: artwork.compositeImageUrl?.length || 0,
+      isDataUrl: artwork.compositeImageUrl?.startsWith('data:image/') || false,
+      hasPoetry: !!artwork.poetry,
+      poetryContent: artwork.poetry
+        ? artwork.poetry.poem?.substring(0, 50) + '...'
+        : 'none',
+      hasMetadata: !!artwork.metadata,
+      hasCompositeFlag: artwork.metadata?.hasComposite,
+    })
+
     // Generate share URL
     const baseUrl = window.location.origin
     const shareCode = savedInfo?.shareCode || artwork.metadata.sessionId
@@ -89,21 +103,43 @@ export const TalkArtResult: React.FC<TalkArtResultProps> = ({
     }
   }, [artwork, savedInfo])
 
-  // Download artwork
+  // Download artwork (prioritize composite version)
   const handleDownload = async () => {
     setIsDownloading(true)
     try {
-      const response = await fetch(artwork.imageUrl)
-      const blob = await response.blob()
-      const url = URL.createObjectURL(blob)
+      // Use composite only if it's actually a data URL (real composite)
+      const hasRealComposite =
+        artwork.compositeImageUrl &&
+        artwork.compositeImageUrl.startsWith('data:image/')
+      const imageUrl = hasRealComposite
+        ? artwork.compositeImageUrl
+        : artwork.imageUrl
+      const fileName = hasRealComposite
+        ? `summer-memory-composite-${artwork.metadata.sessionId}.png`
+        : `summer-memory-${artwork.metadata.sessionId}.png`
 
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `summer-memory-${artwork.metadata.sessionId}.png`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+      // Handle data URLs (for composite images)
+      if (imageUrl && imageUrl.startsWith('data:')) {
+        const a = document.createElement('a')
+        a.href = imageUrl
+        a.download = fileName
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+      } else if (imageUrl) {
+        // Handle regular URLs
+        const response = await fetch(imageUrl)
+        const blob = await response.blob()
+        const url = URL.createObjectURL(blob)
+
+        const a = document.createElement('a')
+        a.href = url
+        a.download = fileName
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      }
     } catch (error) {
       console.error('Download failed:', error)
     } finally {
@@ -230,10 +266,27 @@ export const TalkArtResult: React.FC<TalkArtResultProps> = ({
                   }
                 >
                   <img
-                    src={artwork.imageUrl}
+                    src={(() => {
+                      const imageToShow =
+                        artwork.compositeImageUrl || artwork.imageUrl
+                      console.log('🖼️ Displaying image:', {
+                        usingComposite: !!artwork.compositeImageUrl,
+                        imageSource: imageToShow.substring(0, 50) + '...',
+                        isDataUrl: imageToShow.startsWith('data:image/'),
+                      })
+                      return imageToShow
+                    })()}
                     alt="Generated artwork"
                     className="w-full max-w-md rounded"
                   />
+
+                  {/* Show composite indicator only if actually composed */}
+                  {artwork.compositeImageUrl &&
+                    artwork.compositeImageUrl.startsWith('data:image/') && (
+                      <div className="mt-2 text-xs text-white/70 text-center">
+                        🎭 詩とロゴ合成版
+                      </div>
+                    )}
                 </div>
 
                 {/* Download button */}
@@ -328,9 +381,77 @@ export const TalkArtResult: React.FC<TalkArtResultProps> = ({
                 </button>
               </div>
 
+              {/* Poetry Display (AI Exhibition Feature) - Show only if not actually embedded */}
+              {artwork.poetry &&
+                !(
+                  artwork.compositeImageUrl &&
+                  artwork.compositeImageUrl.startsWith('data:image/')
+                ) && (
+                  <div className="mt-6 p-4 bg-white/10 rounded-lg backdrop-blur-sm">
+                    <div className="flex items-center gap-2 mb-3">
+                      <svg
+                        className="w-5 h-5 text-yellow-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                        />
+                      </svg>
+                      <p className="text-sm font-semibold text-yellow-400">
+                        AI詩人が紡いだ思い出
+                      </p>
+                      <span className="text-xs text-white/60 bg-blue-500/30 px-2 py-1 rounded-full">
+                        GPT-4
+                      </span>
+                    </div>
+                    <div className="text-white whitespace-pre-line text-center leading-relaxed">
+                      {artwork.poetry.poem}
+                    </div>
+                  </div>
+                )}
+
+              {/* Show poetry status only if actually embedded in composite */}
+              {artwork.poetry &&
+                artwork.compositeImageUrl &&
+                artwork.compositeImageUrl.startsWith('data:image/') && (
+                  <div className="mt-6 p-3 bg-green-500/20 rounded-lg backdrop-blur-sm">
+                    <div className="flex items-center justify-center gap-2">
+                      <svg
+                        className="w-4 h-4 text-green-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                      <p className="text-sm text-green-300">
+                        詩が画像に埋め込まれました
+                      </p>
+                      <span className="text-xs text-white/60 bg-blue-500/30 px-2 py-1 rounded-full">
+                        GPT-4
+                      </span>
+                    </div>
+                  </div>
+                )}
+
               {/* Prompt Info */}
               <div className="mt-6 text-sm opacity-70">
                 <p className="line-clamp-2">{artwork.prompt}</p>
+                {artwork.metadata.questionMode === 'multilayer' && (
+                  <p className="text-xs text-blue-300 mt-1">
+                    🎯 多層質問システムで生成
+                  </p>
+                )}
               </div>
             </div>
           </div>

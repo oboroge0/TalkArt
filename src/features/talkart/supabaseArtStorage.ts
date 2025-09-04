@@ -141,14 +141,34 @@ export class SupabaseArtStorage {
         throw new Error('Failed to upload image')
       }
 
-      // Save to database
+      // Save to database using existing schema (store extra data in responses array)
+      const responses = []
+
+      // Store poetry in responses array if available
+      if (artwork.poetry) {
+        responses.push({
+          type: 'poetry',
+          content: artwork.poetry.poem,
+          metadata: artwork.poetry.metadata,
+        })
+      }
+
+      // Store generation metadata in responses array
+      responses.push({
+        type: 'generation_metadata',
+        questionMode: artwork.metadata.questionMode,
+        axisData: artwork.metadata.axisData,
+        style: artwork.metadata.style,
+        themes: artwork.metadata.themes,
+      })
+
       const { data, error } = await supabase
         .from('talkart_artworks')
         .insert({
           session_id: artwork.metadata.sessionId,
           image_url: imagePath,
           prompt: artwork.prompt,
-          responses: [],
+          responses: responses,
         })
         .select()
         .single()
@@ -251,11 +271,45 @@ export class SupabaseArtStorage {
         return []
       }
 
-      // Get full image URLs
-      return (data || []).map((artwork) => ({
-        ...artwork,
-        image_url: artwork.image_url ? getPublicUrl(artwork.image_url) : '',
-      }))
+      // Get full image URLs and restore poetry/metadata from responses array
+      return (data || []).map((artwork) => {
+        const processed = {
+          ...artwork,
+          image_url: artwork.image_url ? getPublicUrl(artwork.image_url) : '',
+        }
+
+        // Extract poetry and metadata from responses array
+        if (artwork.responses && Array.isArray(artwork.responses)) {
+          const poetryResponse = artwork.responses.find(
+            (r: any) => r.type === 'poetry'
+          )
+          const metadataResponse = artwork.responses.find(
+            (r: any) => r.type === 'generation_metadata'
+          )
+
+          if (poetryResponse) {
+            processed.poetry = {
+              poem: poetryResponse.content,
+              metadata: poetryResponse.metadata,
+            }
+          }
+
+          if (metadataResponse) {
+            processed.metadata = {
+              questionMode: metadataResponse.questionMode,
+              axisData: metadataResponse.axisData,
+              style: metadataResponse.style,
+              themes: metadataResponse.themes,
+              // Add defaults for required fields
+              createdAt: artwork.created_at,
+              sessionId: artwork.session_id,
+              generationTime: 0,
+            }
+          }
+        }
+
+        return processed
+      })
     } catch (error) {
       console.error('Failed to get recent artworks:', error)
       return []

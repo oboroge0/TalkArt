@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/router'
 import { Meta } from '@/components/meta'
 import '@/lib/i18n'
 
@@ -14,11 +15,20 @@ interface ConversationResponse {
 }
 
 const TalkArt = () => {
+  const router = useRouter()
   const [currentPhase, setCurrentPhase] = useState<ExperiencePhase>('start')
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [responses, setResponses] = useState<ConversationResponse[]>([])
   const [generatedArtwork, setGeneratedArtwork] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+
+  // Block mobile access
+  useEffect(() => {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+    if (isMobile) {
+      router.replace('/mobile-blocked')
+    }
+  }, [])
 
   // Start experience
   const startExperience = () => {

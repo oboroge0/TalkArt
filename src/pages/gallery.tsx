@@ -10,6 +10,14 @@ const GalleryPage = () => {
   const [shouldRefresh, setShouldRefresh] = useState(false)
 
   useEffect(() => {
+    // Check if mobile device and redirect
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+    if (isMobile) {
+      // Block mobile access to main gallery
+      router.replace('/mobile-blocked')
+      return
+    }
+
     // Check if coming from artwork result (via flying animation)
     const isFromResult = router.query.from === 'result'
     if (isFromResult) {
