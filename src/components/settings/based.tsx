@@ -193,11 +193,16 @@ const Based = () => {
             }}
             disabled={isLoading || isUploading}
           >
-            <option value="/backgrounds/bg-c.png">
+            <option
+              value={`${process.env.BASE_PATH || ''}/backgrounds/bg-c.png`}
+            >
               {t('DefaultBackground')}
             </option>
             {backgroundFiles.map((file) => (
-              <option key={file} value={`/backgrounds/${file}`}>
+              <option
+                key={file}
+                value={`${process.env.BASE_PATH || ''}/backgrounds/${file}`}
+              >
                 {file}
               </option>
             ))}
