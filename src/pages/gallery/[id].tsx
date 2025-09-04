@@ -142,12 +142,9 @@ export default function GallerySharePage() {
             {error ||
               'お探しのアートワークは存在しないか、削除された可能性があります。'}
           </p>
-          <button
-            onClick={() => router.push('/gallery')}
-            className="px-6 py-3 bg-yellow-400 text-purple-900 rounded-full font-bold hover:scale-105 transition-transform"
-          >
-            ギャラリーへ戻る
-          </button>
+          <p className="text-white/70 text-sm">
+            お探しのアートワークは見つかりませんでした
+          </p>
         </div>
       </div>
     )
@@ -165,16 +162,13 @@ export default function GallerySharePage() {
 
         <div className="relative z-10 container mx-auto px-4 py-8">
           {/* Header */}
-          <div className="flex justify-between items-center mb-8">
+          <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-white">
               夏祭りの思い出アート
             </h1>
-            <button
-              onClick={() => router.push('/gallery')}
-              className="px-4 py-2 bg-white/20 text-white rounded-full hover:bg-white/30 transition-colors"
-            >
-              ギャラリーへ戻る
-            </button>
+            <p className="text-white/70 mt-2">
+              QRコードから作品をダウンロード
+            </p>
           </div>
 
           {/* Main content */}
