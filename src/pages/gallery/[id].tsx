@@ -53,20 +53,37 @@ export default function GallerySharePage() {
     fetchArtwork()
   }, [id])
 
-  // Create composite image with poetry and logo
+  // Create composite image with poetry and logo - copied from gallery logic
   useEffect(() => {
     if (!artwork) return
 
     const createCompositeImage = async () => {
       try {
-        // Use ArtworkComposer to create the final composite with poetry and logo
+        // First check for existing composite image (same as gallery)
+        // Support both direct compositeImageUrl and nested metadata structure
+        const compositeUrl =
+          (artwork as any)?.compositeImageUrl ||
+          (artwork as any)?.composite_image_url ||
+          (artwork as any)?.metadata?.compositeImageUrl
+
+        if (compositeUrl && compositeUrl.startsWith('data:image/')) {
+          console.log('QR Debug - Using existing composite image from database')
+          setCompositeImageUrl(compositeUrl)
+          return
+        }
+
+        // If no existing composite, create new one with poetry and logo (same as gallery)
+        console.log('QR Debug - Creating new composite with poetry and logo')
+        console.log('QR Debug - Poetry data:', artwork.poetry?.poem)
+
         const composite = await ArtworkComposer.composeArtwork({
           imageUrl: artwork.image_url,
-          poetry: artwork.poetry?.poem, // Include poetry if available
+          poetry: artwork.poetry?.poem,
           logoUrl: '/images/logo.png',
           sessionId: artwork.session_id,
         })
 
+        console.log('QR Debug - New composite created')
         setCompositeImageUrl(composite.compositeImageUrl)
       } catch (error) {
         console.error('Failed to create composite image:', error)

@@ -25,10 +25,15 @@ const Home = () => {
   const captureStatus = homeStore((s) => s.captureStatus)
   const backgroundImageUrl = homeStore((s) => s.backgroundImageUrl)
   const useVideoAsBackground = settingsStore((s) => s.useVideoAsBackground)
-  const bgUrl =
-    (webcamStatus || captureStatus) && useVideoAsBackground
-      ? ''
-      : `url(/backgrounds/bg-c.png)`
+  const bgUrl = `url(/backgrounds/bg-c.png)` // Force background for debugging
+
+  // Debug logging
+  console.log('Background Debug:', {
+    webcamStatus,
+    captureStatus,
+    useVideoAsBackground,
+    bgUrl,
+  })
   const messageReceiverEnabled = settingsStore((s) => s.messageReceiverEnabled)
   const modelType = settingsStore((s) => s.modelType)
   const { t } = useTranslation()
