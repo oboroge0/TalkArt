@@ -9,3 +9,9 @@
 
 # Keep next-env.d.ts as it's auto-generated
 next-env.d.ts
+
+# Exclude mob VRM files
+public/vrm/mob*.vrm
+
+# Exclude PDF files
+*.pdf
