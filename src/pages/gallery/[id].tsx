@@ -64,7 +64,7 @@ export default function GallerySharePage() {
           imageUrl: artwork.image_url,
           poetry: artwork.poetry?.poem, // Include poetry if available
           logoUrl: '/images/logo.png',
-          sessionId: artwork.session_id
+          sessionId: artwork.session_id,
         })
 
         setCompositeImageUrl(composite.compositeImageUrl)
