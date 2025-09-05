@@ -199,6 +199,24 @@ export default function GallerySharePage() {
                   </div>
                 )}
               </div>
+
+              {/* アンケートリンク */}
+              <div className="bg-white rounded-2xl p-6 shadow-xl">
+                <h3 className="text-lg font-bold text-purple-900 mb-3 text-center">
+                  ✨ 作品の感想をお聞かせください
+                </h3>
+                <p className="text-sm text-gray-600 mb-4 text-center">
+                  アンケートにご協力いただけると嬉しいです
+                </p>
+                <a
+                  href="https://docs.google.com/forms/d/e/1FAIpQLScytUp3Pa5v6vHTgPrKgTQMT9n4KVx2_SUFaasVv2XXF_eAGg/viewform"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full py-3 px-6 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg text-center font-semibold hover:from-purple-700 hover:to-pink-700 transition-all transform hover:scale-105 shadow-lg"
+                >
+                  アンケートに回答する →
+                </a>
+              </div>
             </div>
           </div>
         </div>
