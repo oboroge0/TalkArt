@@ -209,6 +209,19 @@ export class SupabaseArtStorage {
         data.image_url = getPublicUrl(data.image_url)
       }
 
+      // Extract poetry from responses array if available
+      if (data && data.responses && Array.isArray(data.responses)) {
+        const poetryResponse = data.responses.find(
+          (r: any) => r.type === 'poetry'
+        )
+        if (poetryResponse) {
+          data.poetry = {
+            poem: poetryResponse.content,
+            metadata: poetryResponse.metadata || {},
+          }
+        }
+      }
+
       return data
     } catch (error) {
       console.error('Failed to get artwork:', error)
@@ -240,6 +253,19 @@ export class SupabaseArtStorage {
       // Get full image URL
       if (data && data.image_url) {
         data.image_url = getPublicUrl(data.image_url)
+      }
+
+      // Extract poetry from responses array if available
+      if (data && data.responses && Array.isArray(data.responses)) {
+        const poetryResponse = data.responses.find(
+          (r: any) => r.type === 'poetry'
+        )
+        if (poetryResponse) {
+          data.poetry = {
+            poem: poetryResponse.content,
+            metadata: poetryResponse.metadata || {},
+          }
+        }
       }
 
       // Increment view count
