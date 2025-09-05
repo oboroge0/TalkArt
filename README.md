@@ -1,6 +1,6 @@
 # TalkArt - 夏祭りの思い出アート生成システム
 
-<!-- Deployment trigger: 2025-09-04 15:45 -->
+<!-- Deployment trigger: 2025-09-05 morning -->
 
 <p align="center">
   <img src="public/images/summer-festival-bg.jpg" alt="TalkArt" width="600">
