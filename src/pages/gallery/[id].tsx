@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { TalkArtArtwork } from '@/lib/supabase'
 import { Meta } from '@/components/meta'
 import QRCode from 'qrcode'
+import { ArtworkComposer } from '@/utils/artworkComposer'
 
 export default function GallerySharePage() {
   const router = useRouter()
@@ -52,62 +53,26 @@ export default function GallerySharePage() {
     fetchArtwork()
   }, [id])
 
-  // Create composite image with logo
+  // Create composite image with poetry and logo
   useEffect(() => {
     if (!artwork) return
 
     const createCompositeImage = async () => {
-      const originalImg = new Image()
-      const logoImg = new Image()
+      try {
+        // Use ArtworkComposer to create the final composite with poetry and logo
+        const composite = await ArtworkComposer.composeArtwork({
+          imageUrl: artwork.image_url,
+          poetry: artwork.poetry?.poem, // Include poetry if available
+          logoUrl: '/images/logo.png',
+          sessionId: artwork.session_id
+        })
 
-      logoImg.crossOrigin = 'anonymous'
-      originalImg.crossOrigin = 'anonymous'
-
-      await new Promise<void>((resolve) => {
-        let loadedCount = 0
-        const checkAllLoaded = () => {
-          loadedCount++
-          if (loadedCount === 2) resolve()
-        }
-
-        logoImg.onload = checkAllLoaded
-        originalImg.onload = checkAllLoaded
-
-        logoImg.src = '/images/logo.png'
-        originalImg.src = artwork.image_url
-      })
-
-      const canvas = document.createElement('canvas')
-      const ctx = canvas.getContext('2d')
-      if (!ctx) return
-
-      // Set canvas size
-      canvas.width = originalImg.width
-      canvas.height = originalImg.height
-
-      // Draw original image
-      ctx.drawImage(originalImg, 0, 0)
-
-      // Calculate logo size (30% of image width)
-      const logoDisplayWidth = canvas.width * 0.3
-      const logoAspectRatio = logoImg.height / logoImg.width
-      const logoDisplayHeight = logoDisplayWidth * logoAspectRatio
-
-      // Position: bottom-right corner
-      const logoX = canvas.width - logoDisplayWidth
-      const logoY = canvas.height - logoDisplayHeight
-
-      // Set logo opacity
-      ctx.save()
-      ctx.globalAlpha = 0.85
-
-      // Draw logo
-      ctx.drawImage(logoImg, logoX, logoY, logoDisplayWidth, logoDisplayHeight)
-
-      ctx.restore()
-
-      // Convert to image URL
-      setCompositeImageUrl(canvas.toDataURL('image/png', 0.95))
+        setCompositeImageUrl(composite.compositeImageUrl)
+      } catch (error) {
+        console.error('Failed to create composite image:', error)
+        // Fallback to original image
+        setCompositeImageUrl(artwork.image_url)
+      }
     }
 
     createCompositeImage()
